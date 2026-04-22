@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:block",
+  "pools": [
+    {
+      "bonus_rolls": 0.0,
+      "conditions": [
+        {
+          "condition": "minecraft:survives_explosion"
+        }
+      ],
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "gregtechvaults:vault_core_mk3"
+        }
+      ],
+      "rolls": 1.0
+    }
+  ],
+  "random_sequence": "gregtechvaults:blocks/vault_core_mk3"
+}
