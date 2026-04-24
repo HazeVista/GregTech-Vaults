@@ -1,7 +1,5 @@
 package com.astrogreg.gregvaults.screen;
 
-import com.astrogreg.gregvaults.registry.VaultMenuTypes;
-import com.astrogreg.gregvaults.screen.VaultSlot.RemappingHandler;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -10,6 +8,9 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemStackHandler;
+
+import com.astrogreg.gregvaults.registry.VaultMenuTypes;
+import com.astrogreg.gregvaults.screen.VaultSlot.RemappingHandler;
 
 public class VaultContainerMenu extends AbstractContainerMenu {
 
@@ -26,16 +27,15 @@ public class VaultContainerMenu extends AbstractContainerMenu {
     public final int visibleRows;
     public final int playerY;
     public final int hotbarY;
-    
+
     private final RemappingHandler remapping;
-    
+
     private int[] filteredIndices = null;
 
     public VaultContainerMenu(
-        int windowId,
-        Inventory playerInv,
-        IItemHandler vaultHandler
-    ) {
+                              int windowId,
+                              Inventory playerInv,
+                              IItemHandler vaultHandler) {
         super(VaultMenuTypes.VAULT_MENU.get(), windowId);
         this.vaultHandler = vaultHandler;
         this.totalSlots = vaultHandler.getSlots();
@@ -51,44 +51,37 @@ public class VaultContainerMenu extends AbstractContainerMenu {
 
         for (int i = 0; i < visibleSlots; i++) {
             addSlot(
-                new VaultSlot(
-                    remapping,
-                    i,
-                    SLOTS_X + (i % COLS) * SLOT_SIZE,
-                    SLOTS_Y + (i / COLS) * SLOT_SIZE
-                )
-            );
+                    new VaultSlot(
+                            remapping,
+                            i,
+                            SLOTS_X + (i % COLS) * SLOT_SIZE,
+                            SLOTS_Y + (i / COLS) * SLOT_SIZE));
         }
 
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
                 addSlot(
-                    new Slot(
-                        playerInv,
-                        col + row * 9 + 9,
-                        SLOTS_X + col * SLOT_SIZE,
-                        this.playerY + row * SLOT_SIZE
-                    )
-                );
+                        new Slot(
+                                playerInv,
+                                col + row * 9 + 9,
+                                SLOTS_X + col * SLOT_SIZE,
+                                this.playerY + row * SLOT_SIZE));
             }
         }
         for (int col = 0; col < 9; col++) {
             addSlot(
-                new Slot(
-                    playerInv,
-                    col,
-                    SLOTS_X + col * SLOT_SIZE,
-                    this.hotbarY
-                )
-            );
+                    new Slot(
+                            playerInv,
+                            col,
+                            SLOTS_X + col * SLOT_SIZE,
+                            this.hotbarY));
         }
     }
 
     public VaultContainerMenu(
-        int windowId,
-        Inventory playerInv,
-        FriendlyByteBuf buf
-    ) {
+                              int windowId,
+                              Inventory playerInv,
+                              FriendlyByteBuf buf) {
         this(windowId, playerInv, new ItemStackHandler(buf.readInt()));
     }
 
@@ -105,17 +98,15 @@ public class VaultContainerMenu extends AbstractContainerMenu {
             java.util.List<Integer> matching = new java.util.ArrayList<>();
             for (int i = 0; i < vaultHandler.getSlots(); i++) {
                 ItemStack stack = vaultHandler.getStackInSlot(i);
-                if (
-                    !stack.isEmpty() &&
-                    stack.getHoverName().getString().toLowerCase().contains(q)
-                ) {
+                if (!stack.isEmpty() &&
+                        stack.getHoverName().getString().toLowerCase().contains(q)) {
                     matching.add(i);
                 }
             }
             filteredIndices = matching
-                .stream()
-                .mapToInt(Integer::intValue)
-                .toArray();
+                    .stream()
+                    .mapToInt(Integer::intValue)
+                    .toArray();
             remapping.setFilteredIndices(filteredIndices);
         }
     }
@@ -129,8 +120,7 @@ public class VaultContainerMenu extends AbstractContainerMenu {
     }
 
     public int getTotalFilteredRows() {
-        int count =
-            filteredIndices != null ? filteredIndices.length : totalSlots;
+        int count = filteredIndices != null ? filteredIndices.length : totalSlots;
         return (int) Math.ceil(count / (double) COLS);
     }
 
@@ -141,13 +131,11 @@ public class VaultContainerMenu extends AbstractContainerMenu {
 
     @Override
     public void initializeContents(
-        int stateId,
-        java.util.List<ItemStack> items,
-        ItemStack carried
-    ) {
+                                   int stateId,
+                                   java.util.List<ItemStack> items,
+                                   ItemStack carried) {
         if (items.size() > this.slots.size()) {
-            net.minecraft.client.Minecraft mc =
-                net.minecraft.client.Minecraft.getInstance();
+            net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
             if (mc.player != null) mc.player.closeContainer();
             return;
         }
@@ -162,13 +150,9 @@ public class VaultContainerMenu extends AbstractContainerMenu {
         ItemStack original = stack.copy();
         int vaultCount = getVisibleSlotCount();
         if (index < vaultCount) {
-            if (
-                !moveItemStackTo(stack, vaultCount, slots.size(), true)
-            ) return ItemStack.EMPTY;
+            if (!moveItemStackTo(stack, vaultCount, slots.size(), true)) return ItemStack.EMPTY;
         } else {
-            if (
-                !moveItemStackTo(stack, 0, vaultCount, false)
-            ) return ItemStack.EMPTY;
+            if (!moveItemStackTo(stack, 0, vaultCount, false)) return ItemStack.EMPTY;
         }
         if (stack.isEmpty()) slot.set(ItemStack.EMPTY);
         else slot.setChanged();

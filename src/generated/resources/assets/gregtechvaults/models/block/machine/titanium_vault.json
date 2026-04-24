@@ -1,5 +1,10 @@
 {
   "parent": "minecraft:block/block",
+  "dynamic_renders": [
+    {
+      "type": "gregtechvaults:vault_overlay"
+    }
+  ],
   "loader": "gtceu:machine",
   "machine": "gregtechvaults:titanium_vault",
   "texture_overrides": {
@@ -11,7 +16,7 @@
         "parent": "gtceu:block/machine/template/cube_all/sided",
         "textures": {
           "all": "gtceu:block/casings/solid/machine_casing_stable_titanium",
-          "overlay_front": "gregtechvaults:block/multiblock/vault_controller/overlay_front"
+          "overlay_front": "gregtechvaults:block/multiblock/overlay_front"
         }
       }
     },
@@ -20,7 +25,7 @@
         "parent": "gtceu:block/machine/template/cube_all/sided",
         "textures": {
           "all": "gtceu:block/casings/solid/machine_casing_stable_titanium",
-          "overlay_front": "gregtechvaults:block/multiblock/vault_controller/overlay_front"
+          "overlay_front": "gregtechvaults:block/multiblock/overlay_front"
         }
       }
     },
@@ -29,7 +34,7 @@
         "parent": "gtceu:block/machine/template/cube_all/sided",
         "textures": {
           "all": "gtceu:block/casings/solid/machine_casing_stable_titanium",
-          "overlay_front": "gregtechvaults:block/multiblock/vault_controller/overlay_front"
+          "overlay_front": "gregtechvaults:block/multiblock/overlay_front"
         }
       }
     },
@@ -38,7 +43,7 @@
         "parent": "gtceu:block/machine/template/cube_all/sided",
         "textures": {
           "all": "gtceu:block/casings/solid/machine_casing_stable_titanium",
-          "overlay_front": "gregtechvaults:block/multiblock/vault_controller/overlay_front"
+          "overlay_front": "gregtechvaults:block/multiblock/overlay_front"
         }
       }
     },
@@ -47,7 +52,7 @@
         "parent": "gtceu:block/machine/template/cube_all/sided",
         "textures": {
           "all": "gtceu:block/casings/solid/machine_casing_stable_titanium",
-          "overlay_front": "gregtechvaults:block/multiblock/vault_controller/overlay_front"
+          "overlay_front": "gregtechvaults:block/multiblock/overlay_front"
         }
       }
     },
@@ -56,7 +61,7 @@
         "parent": "gtceu:block/machine/template/cube_all/sided",
         "textures": {
           "all": "gtceu:block/casings/solid/machine_casing_stable_titanium",
-          "overlay_front": "gregtechvaults:block/multiblock/vault_controller/overlay_front"
+          "overlay_front": "gregtechvaults:block/multiblock/overlay_front"
         }
       }
     },
@@ -65,7 +70,7 @@
         "parent": "gtceu:block/machine/template/cube_all/sided",
         "textures": {
           "all": "gtceu:block/casings/solid/machine_casing_stable_titanium",
-          "overlay_front": "gregtechvaults:block/multiblock/vault_controller/overlay_front"
+          "overlay_front": "gregtechvaults:block/multiblock/overlay_front"
         }
       }
     },
@@ -74,7 +79,7 @@
         "parent": "gtceu:block/machine/template/cube_all/sided",
         "textures": {
           "all": "gtceu:block/casings/solid/machine_casing_stable_titanium",
-          "overlay_front": "gregtechvaults:block/multiblock/vault_controller/overlay_front"
+          "overlay_front": "gregtechvaults:block/multiblock/overlay_front"
         }
       }
     }

@@ -1,13 +1,10 @@
 package com.astrogreg.gregvaults.multiblock;
 
-import com.astrogreg.gregvaults.blocks.VaultCoreBlock;
-import com.astrogreg.gregvaults.blocks.VaultCoreBlock.CoreTier;
-import com.astrogreg.gregvaults.config.VaultConfig;
-import com.astrogreg.gregvaults.screen.VaultContainerMenu;
 import com.gregtechceu.gtceu.api.machine.IMachineBlockEntity;
 import com.gregtechceu.gtceu.api.machine.feature.IDropSaveMachine;
-import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiController;
 import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
+import com.gregtechceu.gtceu.common.machine.multiblock.part.ItemBusPartMachine;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -18,20 +15,24 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleMenuProvider;
-import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraftforge.items.ItemHandlerHelper;
 import net.minecraftforge.items.ItemStackHandler;
 import net.minecraftforge.network.NetworkHooks;
 
+import com.astrogreg.gregvaults.blocks.VaultCoreBlock;
+import com.astrogreg.gregvaults.blocks.VaultCoreBlock.CoreTier;
+import com.astrogreg.gregvaults.config.VaultConfig;
+import com.astrogreg.gregvaults.screen.VaultContainerMenu;
+
 public class VaultMachine
-    extends MultiblockControllerMachine
-    implements IDropSaveMachine
-{
+                          extends MultiblockControllerMachine
+                          implements IDropSaveMachine {
 
     public enum VaultTier {
+
         BRONZE,
         STEEL,
         TITANIUM;
@@ -65,6 +66,7 @@ public class VaultMachine
 
     private ItemStackHandler createHandler(int size) {
         return new ItemStackHandler(size) {
+
             @Override
             protected void onContentsChanged(int slot) {
                 markDirty();
@@ -89,10 +91,12 @@ public class VaultMachine
         super.onStructureFormed();
         int newSlots = countSlots();
         totalSlots = newSlots;
-    
+
         if (itemHandler.getSlots() != newSlots) {
             kickPlayersAndResize(newSlots);
         }
+
+        subscribeServerTick(this::transferFromBus);
     }
 
     @Override
@@ -105,10 +109,8 @@ public class VaultMachine
     private void kickPlayers() {
         if (getLevel() instanceof ServerLevel serverLevel) {
             for (ServerPlayer sp : serverLevel.players()) {
-                if (
-                    sp.containerMenu instanceof VaultContainerMenu menu &&
-                    menu.vaultHandler == this.itemHandler
-                ) {
+                if (sp.containerMenu instanceof VaultContainerMenu menu &&
+                        menu.vaultHandler == this.itemHandler) {
                     sp.closeContainer();
                 }
             }
@@ -132,27 +134,20 @@ public class VaultMachine
 
     @Override
     public InteractionResult onUse(
-        BlockState state,
-        net.minecraft.world.level.Level level,
-        BlockPos pos,
-        Player player,
-        InteractionHand hand,
-        BlockHitResult hit
-    ) {
-        if (
-            !level.isClientSide && player instanceof ServerPlayer serverPlayer
-        ) {
+                                   BlockState state,
+                                   net.minecraft.world.level.Level level,
+                                   BlockPos pos,
+                                   Player player,
+                                   InteractionHand hand,
+                                   BlockHitResult hit) {
+        if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
             if (!isFormed()) {
                 return InteractionResult.PASS;
             }
             MenuProvider provider = new SimpleMenuProvider(
-                (windowId, playerInv, p) ->
-                    new VaultContainerMenu(windowId, playerInv, itemHandler),
-                Component.translatable("gui.gregtechvaults.vault")
-            );
-            NetworkHooks.openScreen(serverPlayer, provider, buf ->
-                buf.writeInt(totalSlots)
-            );
+                    (windowId, playerInv, p) -> new VaultContainerMenu(windowId, playerInv, itemHandler),
+                    Component.translatable("gui.gregtechvaults.vault"));
+            NetworkHooks.openScreen(serverPlayer, provider, buf -> buf.writeInt(totalSlots));
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
     }
@@ -193,9 +188,16 @@ public class VaultMachine
         if (getLevel() == null) return vaultTier.baseSlots();
 
         Direction facing = getFrontFacing();
-        Direction back = facing.getOpposite();
-        Direction right = facing.getClockWise();
+        Direction upward = getUpwardsFacing();
+        boolean flipped = isFlipped();
+
+        Direction back = com.gregtechceu.gtceu.api.pattern.util.RelativeDirection.BACK.getRelative(facing, upward,
+                flipped);
+        Direction right = com.gregtechceu.gtceu.api.pattern.util.RelativeDirection.RIGHT.getRelative(facing, upward,
+                flipped);
+        Direction up = com.gregtechceu.gtceu.api.pattern.util.RelativeDirection.UP.getRelative(facing, upward, flipped);
         Direction left = right.getOpposite();
+        Direction down = up.getOpposite();
 
         BlockPos origin = getPos();
         int slots = vaultTier.baseSlots();
@@ -204,12 +206,9 @@ public class VaultMachine
             for (int h = -1; h <= 1; h++) {
                 for (int w = -1; w <= 1; w++) {
                     BlockPos p = origin
-                        .relative(back, d)
-                        .relative(
-                            h >= 0 ? Direction.UP : Direction.DOWN,
-                            Math.abs(h)
-                        )
-                        .relative(w >= 0 ? right : left, Math.abs(w));
+                            .relative(back, d)
+                            .relative(h >= 0 ? up : down, Math.abs(h))
+                            .relative(w >= 0 ? right : left, Math.abs(w));
 
                     BlockState s = getLevel().getBlockState(p);
                     if (s.getBlock() instanceof VaultCoreBlock core) {
@@ -222,5 +221,20 @@ public class VaultMachine
             }
         }
         return slots;
+    }
+
+    private void transferFromBus() {
+        if (!isFormed()) return;
+        for (var part : getParts()) {
+            if (part.self() instanceof ItemBusPartMachine bus) {
+                var busInv = bus.getInventory().storage;
+                for (int i = 0; i < busInv.getSlots(); i++) {
+                    var stack = busInv.getStackInSlot(i);
+                    if (stack.isEmpty()) continue;
+                    var remaining = ItemHandlerHelper.insertItemStacked(itemHandler, stack, false);
+                    busInv.setStackInSlot(i, remaining);
+                }
+            }
+        }
     }
 }

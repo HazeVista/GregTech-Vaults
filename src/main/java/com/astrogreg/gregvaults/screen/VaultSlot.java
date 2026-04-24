@@ -10,11 +10,10 @@ public class VaultSlot extends SlotItemHandler {
     private final RemappingHandler remapping;
 
     public VaultSlot(
-        RemappingHandler remapping,
-        int visibleIndex,
-        int x,
-        int y
-    ) {
+                     RemappingHandler remapping,
+                     int visibleIndex,
+                     int x,
+                     int y) {
         super(remapping, visibleIndex, x, y);
         this.remapping = remapping;
     }
@@ -48,9 +47,7 @@ public class VaultSlot extends SlotItemHandler {
         private int realIndex(int visibleSlot) {
             int absolute = offset + visibleSlot;
             if (filteredIndices != null) {
-                if (
-                    absolute < 0 || absolute >= filteredIndices.length
-                ) return -1;
+                if (absolute < 0 || absolute >= filteredIndices.length) return -1;
                 return filteredIndices[absolute];
             } else {
                 if (absolute < 0 || absolute >= real.getSlots()) return -1;
@@ -75,10 +72,9 @@ public class VaultSlot extends SlotItemHandler {
 
         @Override
         public ItemStack insertItem(
-            int slot,
-            ItemStack stack,
-            boolean simulate
-        ) {
+                                    int slot,
+                                    ItemStack stack,
+                                    boolean simulate) {
             int ri = realIndex(slot);
             return ri < 0 ? stack : real.insertItem(ri, stack, simulate);
         }
@@ -86,9 +82,7 @@ public class VaultSlot extends SlotItemHandler {
         @Override
         public ItemStack extractItem(int slot, int amount, boolean simulate) {
             int ri = realIndex(slot);
-            return ri < 0
-                ? ItemStack.EMPTY
-                : real.extractItem(ri, amount, simulate);
+            return ri < 0 ? ItemStack.EMPTY : real.extractItem(ri, amount, simulate);
         }
 
         @Override
