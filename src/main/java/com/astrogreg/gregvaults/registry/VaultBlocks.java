@@ -1,11 +1,11 @@
 package com.astrogreg.gregvaults.registry;
 
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.level.block.SoundType;
+
 import com.astrogreg.gregvaults.GregTechVaults;
 import com.astrogreg.gregvaults.blocks.VaultCoreBlock;
 import com.astrogreg.gregvaults.blocks.VaultCoreBlock.CoreTier;
-
-import net.minecraft.tags.BlockTags;
-import net.minecraft.world.level.block.SoundType;
 import com.tterrag.registrate.util.entry.BlockEntry;
 
 @SuppressWarnings("all")

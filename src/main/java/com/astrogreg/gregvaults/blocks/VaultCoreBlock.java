@@ -6,6 +6,7 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 public class VaultCoreBlock extends Block {
 
     public enum CoreTier {
+
         MK1(1),
         MK2(2),
         MK3(3);
@@ -26,10 +27,5 @@ public class VaultCoreBlock extends Block {
 
     public CoreTier getTier() {
         return tier;
-    }
-
-
-    public int getSlotValue() {
-        return 0;
     }
 }
