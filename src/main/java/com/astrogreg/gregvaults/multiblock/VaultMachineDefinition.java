@@ -64,7 +64,7 @@ public class VaultMachineDefinition {
         };
 
         String name = switch (tier) {
-w            case BRONZE -> "large_bronze_vault";
+            case BRONZE -> "large_bronze_vault";
             case STEEL -> "large_steel_vault";
             case TITANIUM -> "large_titanium_vault";
         };
