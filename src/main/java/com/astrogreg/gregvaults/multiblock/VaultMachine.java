@@ -47,9 +47,9 @@ public class VaultMachine
 
         public int baseSlots() {
             return switch (this) {
-                case BRONZE -> 36;
-                case STEEL -> 72;
-                case TITANIUM -> 108;
+                case BRONZE -> VaultConfig.INSTANCE.vaultValues.bronzeVault.bronzeBaseSlots;
+                case STEEL -> VaultConfig.INSTANCE.vaultValues.steelVault.steelBaseSlots;
+                case TITANIUM -> VaultConfig.INSTANCE.vaultValues.titaniumVault.titaniumBaseSlots;
             };
         }
     }
