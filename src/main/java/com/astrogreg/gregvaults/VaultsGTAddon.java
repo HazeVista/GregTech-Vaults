@@ -1,5 +1,6 @@
 package com.astrogreg.gregvaults;
 
+import com.astrogreg.gregvaults.recipe.GTVaultsRecipes;
 import com.gregtechceu.gtceu.api.addon.GTAddon;
 import com.gregtechceu.gtceu.api.addon.IGTAddon;
 import com.gregtechceu.gtceu.api.registry.registrate.GTRegistrate;
@@ -32,7 +33,7 @@ public class VaultsGTAddon implements IGTAddon {
 
     @Override
     public void addRecipes(Consumer<FinishedRecipe> provider) {
-        // CustomRecipes.init(provider);
+        GTVaultsRecipes.init(provider);
     }
 
     @Override
