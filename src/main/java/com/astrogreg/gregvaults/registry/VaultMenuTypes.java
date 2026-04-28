@@ -8,6 +8,7 @@ import net.minecraftforge.registries.RegistryObject;
 
 import com.astrogreg.gregvaults.GregTechVaults;
 import com.astrogreg.gregvaults.screen.VaultContainerMenu;
+import com.astrogreg.gregvaults.screen.VaultTerminalMenu;
 
 public class VaultMenuTypes {
 
@@ -17,6 +18,10 @@ public class VaultMenuTypes {
 
     public static final RegistryObject<MenuType<VaultContainerMenu>> VAULT_MENU = MENU_TYPES.register("vault_menu",
             () -> IForgeMenuType.create(VaultContainerMenu::new));
+
+    public static final RegistryObject<MenuType<VaultTerminalMenu>> VAULT_TERMINAL_MENU = MENU_TYPES.register(
+            "vault_terminal_menu",
+            () -> IForgeMenuType.create(VaultTerminalMenu::new));
 
     public static void init() {}
 }

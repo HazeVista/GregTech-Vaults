@@ -1,5 +1,19 @@
 {
-  "block.gregtechvaults.vault_core_mk1": "Vault Core MK1",
-  "block.gregtechvaults.vault_core_mk2": "Vault Core MK2",
-  "block.gregtechvaults.vault_core_mk3": "Vault Core MK3"
+  "block.gregtechvaults.large_bronze_vault": "Large Bronze Vault",
+  "block.gregtechvaults.large_steel_vault": "Large Steel Vault",
+  "block.gregtechvaults.large_titanium_vault": "Large Titanium Vault",
+  "block.gregtechvaults.vault_core_mk1": "Vault Core Mk1",
+  "block.gregtechvaults.vault_core_mk2": "Vault Core Mk2",
+  "block.gregtechvaults.vault_core_mk3": "Vault Core Mk3",
+  "gui.gregtechvaults.vault_terminal": "Vault Terminal",
+  "item.gregtechvaults.wireless_vault_terminal": "Wireless Vault Terminal",
+  "message.gregtechvaults.different_dimension": "Vault is in a different dimension.",
+  "message.gregtechvaults.dimension_not_found": "Linked dimension not found.",
+  "message.gregtechvaults.terminal_not_linked": "Terminal is not linked to any vault.",
+  "message.gregtechvaults.vault_linked": "Vault linked!",
+  "message.gregtechvaults.vault_not_formed": "The vault is not formed.",
+  "message.gregtechvaults.vault_not_found": "Vault not found at linked position.",
+  "tooltip.gregtechvaults.how_to_link": "Shift + right-click on vault to link",
+  "tooltip.gregtechvaults.linked": "Linked",
+  "tooltip.gregtechvaults.not_linked": "Not linked"
 }

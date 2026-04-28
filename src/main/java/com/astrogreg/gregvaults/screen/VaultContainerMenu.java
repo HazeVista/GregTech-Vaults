@@ -4,6 +4,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.items.IItemHandler;
@@ -36,15 +37,42 @@ public class VaultContainerMenu extends AbstractContainerMenu {
                               int windowId,
                               Inventory playerInv,
                               IItemHandler vaultHandler) {
-        super(VaultMenuTypes.VAULT_MENU.get(), windowId);
+        this(VaultMenuTypes.VAULT_MENU.get(), windowId, playerInv, vaultHandler);
+    }
+
+    protected VaultContainerMenu(
+                                 MenuType<?> menuType,
+                                 int windowId,
+                                 Inventory playerInv,
+                                 IItemHandler vaultHandler) {
+        this(menuType, windowId, playerInv, vaultHandler, 0);
+    }
+
+    protected VaultContainerMenu(
+                                 MenuType<?> menuType,
+                                 int windowId,
+                                 Inventory playerInv,
+                                 IItemHandler vaultHandler,
+                                 int extraPlayerYOffset) {
+        this(menuType, windowId, playerInv, vaultHandler, extraPlayerYOffset, MAX_ROWS);
+    }
+
+    protected VaultContainerMenu(
+                                 MenuType<?> menuType,
+                                 int windowId,
+                                 Inventory playerInv,
+                                 IItemHandler vaultHandler,
+                                 int extraPlayerYOffset,
+                                 int maxRows) {
+        super(menuType, windowId);
         this.vaultHandler = vaultHandler;
         this.totalSlots = vaultHandler.getSlots();
 
         int usedRows = Math.max(1, (int) Math.ceil(totalSlots / (double) COLS));
-        this.visibleRows = Math.min(usedRows, MAX_ROWS);
+        this.visibleRows = Math.min(usedRows, maxRows);
         int visibleSlots = visibleRows * COLS;
 
-        this.playerY = SLOTS_Y + visibleRows * SLOT_SIZE + 14;
+        this.playerY = SLOTS_Y + visibleRows * SLOT_SIZE + 14 + extraPlayerYOffset;
         this.hotbarY = this.playerY + 3 * SLOT_SIZE + 4;
 
         this.remapping = new RemappingHandler(vaultHandler, visibleSlots);

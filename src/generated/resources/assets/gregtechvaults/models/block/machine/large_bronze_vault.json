@@ -6,7 +6,7 @@
     }
   ],
   "loader": "gtceu:machine",
-  "machine": "gregtechvaults:bronze_vault",
+  "machine": "gregtechvaults:large_bronze_vault",
   "texture_overrides": {
     "all": "gtceu:block/casings/solid/machine_casing_bronze_plated_bricks"
   },

@@ -27,8 +27,10 @@ import com.astrogreg.gregvaults.datagen.VaultDatagen;
 import com.astrogreg.gregvaults.multiblock.VaultMachineDefinition;
 import com.astrogreg.gregvaults.network.VaultNetwork;
 import com.astrogreg.gregvaults.registry.VaultBlocks;
+import com.astrogreg.gregvaults.registry.VaultItems;
 import com.astrogreg.gregvaults.registry.VaultMenuTypes;
 import com.astrogreg.gregvaults.screen.VaultScreen;
+import com.astrogreg.gregvaults.screen.VaultTerminalScreen;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -38,8 +40,7 @@ public class GregTechVaults {
 
     public static final String MOD_ID = "gregtechvaults";
     public static final Logger LOGGER = LogManager.getLogger();
-    public static GTRegistrate REGISTRATE = GTRegistrate.create(
-            GregTechVaults.MOD_ID);
+    public static GTRegistrate REGISTRATE = GTRegistrate.create(GregTechVaults.MOD_ID);
 
     public GregTechVaults() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
@@ -47,12 +48,8 @@ public class GregTechVaults {
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::clientSetup);
 
-        modEventBus.addGenericListener(
-                GTRecipeType.class,
-                this::registerRecipeTypes);
-        modEventBus.addGenericListener(
-                MachineDefinition.class,
-                this::registerMachines);
+        modEventBus.addGenericListener(GTRecipeType.class, this::registerRecipeTypes);
+        modEventBus.addGenericListener(MachineDefinition.class, this::registerMachines);
         modEventBus.addGenericListener(SoundEntry.class, this::registerSounds);
 
         modEventBus.addListener(this::addMaterialRegistries);
@@ -75,17 +72,18 @@ public class GregTechVaults {
         VaultConfig.init();
         VaultDatagen.init();
         VaultBlocks.init();
+        VaultItems.init();
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(VaultNetwork::init);
+        event.enqueueWork(VaultItems::registerLinkables);
     }
 
     private void clientSetup(final FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
-            MenuScreens.register(
-                    VaultMenuTypes.VAULT_MENU.get(),
-                    VaultScreen::new);
+            MenuScreens.register(VaultMenuTypes.VAULT_MENU.get(), VaultScreen::new);
+            MenuScreens.register(VaultMenuTypes.VAULT_TERMINAL_MENU.get(), VaultTerminalScreen::new);
         });
     }
 
@@ -101,14 +99,11 @@ public class GregTechVaults {
 
     private void modifyMaterials(PostMaterialEvent event) {}
 
-    private void registerRecipeTypes(
-                                     GTCEuAPI.RegisterEvent<ResourceLocation, GTRecipeType> event) {}
+    private void registerRecipeTypes(GTCEuAPI.RegisterEvent<ResourceLocation, GTRecipeType> event) {}
 
-    private void registerMachines(
-                                  GTCEuAPI.RegisterEvent<ResourceLocation, MachineDefinition> event) {
+    private void registerMachines(GTCEuAPI.RegisterEvent<ResourceLocation, MachineDefinition> event) {
         VaultMachineDefinition.init();
     }
 
-    public void registerSounds(
-                               GTCEuAPI.RegisterEvent<ResourceLocation, SoundEntry> event) {}
+    public void registerSounds(GTCEuAPI.RegisterEvent<ResourceLocation, SoundEntry> event) {}
 }

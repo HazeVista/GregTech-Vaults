@@ -42,7 +42,6 @@ public class VaultConfig {
         @Configurable
         @Configurable.Comment({ "The number of item slots added by the Vault Core MK III", "Default: 500" })
         public int mk3SlotValue = 500;
-
     }
 
     public static class VaultValues {
@@ -63,13 +62,12 @@ public class VaultConfig {
             public int bronzeBaseSlots = 36;
 
             @Configurable
-            @Configurable.Comment({"Maximum number of interfaces for the Large Bronze Vault", "Default: 2"})
+            @Configurable.Comment({ "Maximum number of interfaces for the Large Bronze Vault", "Default: 2" })
             public int bronzeInterfaceLimit = 2;
 
             @Configurable
             @Configurable.Comment({ "Whether wireless terminals can connect to the Large  Vault", "Default: true" })
             public boolean bronzeWireless = true;
-
         }
 
         public static class SteelVault {
@@ -79,13 +77,13 @@ public class VaultConfig {
             public int steelBaseSlots = 72;
 
             @Configurable
-            @Configurable.Comment({"Maximum number of interfaces for the Large  Vault", "Default: 4"})
+            @Configurable.Comment({ "Maximum number of interfaces for the Large  Vault", "Default: 4" })
             public int steelInterfaceLimit = 4;
 
             @Configurable
-            @Configurable.Comment({ "Whether wireless terminals can connect to the Large Steel Vault", "Default: true" })
+            @Configurable.Comment({ "Whether wireless terminals can connect to the Large Steel Vault",
+                    "Default: true" })
             public boolean steelWireless = true;
-
         }
 
         public static class TitaniumVault {
@@ -95,25 +93,26 @@ public class VaultConfig {
             public int titaniumBaseSlots = 108;
 
             @Configurable
-            @Configurable.Comment({"Maximum number of interfaces for the Large Titanium Vault", "Default: 8"})
+            @Configurable.Comment({ "Maximum number of interfaces for the Large Titanium Vault", "Default: 8" })
             public int titaniumInterfaceLimit = 8;
 
             @Configurable
-            @Configurable.Comment({ "Whether wireless terminals can connect to the Large Titanium Vault", "Default: true" })
+            @Configurable.Comment({ "Whether wireless terminals can connect to the Large Titanium Vault",
+                    "Default: true" })
             public boolean titaniumWireless = true;
-
         }
     }
-
 
     public static class WirelessTerminal {
 
         @Configurable
-        @Configurable.Comment({"Base distance in blocks that the wireless terminal can connect to a vault", "Default: 64"})
+        @Configurable.Comment({ "Base distance in blocks that the wireless terminal can connect to a vault",
+                "Default: 64" })
         public int connectionDistance = 64;
 
         @Configurable
-        @Configurable.Comment({ "Whether infinite range is enabled for the wireless terminal, also enables cross-dimension connection",
+        @Configurable.Comment({
+                "Whether infinite range is enabled for the wireless terminal, also enables cross-dimension connection",
                 "If true, connectionDistance will be ignored entirely", "Default: false" })
         public boolean infiniteRange = false;
 

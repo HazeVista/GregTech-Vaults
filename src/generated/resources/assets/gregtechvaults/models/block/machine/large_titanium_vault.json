@@ -6,7 +6,7 @@
     }
   ],
   "loader": "gtceu:machine",
-  "machine": "gregtechvaults:titanium_vault",
+  "machine": "gregtechvaults:large_titanium_vault",
   "texture_overrides": {
     "all": "gtceu:block/casings/solid/machine_casing_stable_titanium"
   },

@@ -1,11 +1,12 @@
 package com.astrogreg.gregvaults;
 
-import com.astrogreg.gregvaults.recipe.GTVaultsRecipes;
 import com.gregtechceu.gtceu.api.addon.GTAddon;
 import com.gregtechceu.gtceu.api.addon.IGTAddon;
 import com.gregtechceu.gtceu.api.registry.registrate.GTRegistrate;
 
 import net.minecraft.data.recipes.FinishedRecipe;
+
+import com.astrogreg.gregvaults.recipe.GTVaultsRecipes;
 
 import java.util.function.Consumer;
 
