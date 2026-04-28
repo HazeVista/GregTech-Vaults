@@ -17,6 +17,7 @@ public class VaultBlocks {
             .tag(BlockTags.MINEABLE_WITH_PICKAXE)
             .blockstate((ctx, prov) -> prov.simpleBlock(ctx.get(),
                     prov.models().cubeAll(ctx.getName(), prov.modLoc("block/cores/vault_core_mk1"))))
+            .lang("Vault Core MK I")
             .simpleItem()
             .register();
 
@@ -26,6 +27,7 @@ public class VaultBlocks {
             .tag(BlockTags.MINEABLE_WITH_PICKAXE)
             .blockstate((ctx, prov) -> prov.simpleBlock(ctx.get(),
                     prov.models().cubeAll(ctx.getName(), prov.modLoc("block/cores/vault_core_mk2"))))
+            .lang("Vault Core MK II")
             .simpleItem()
             .register();
 
@@ -35,6 +37,7 @@ public class VaultBlocks {
             .tag(BlockTags.MINEABLE_WITH_PICKAXE)
             .blockstate((ctx, prov) -> prov.simpleBlock(ctx.get(),
                     prov.models().cubeAll(ctx.getName(), prov.modLoc("block/cores/vault_core_mk3"))))
+            .lang("Vault Core MK III")
             .simpleItem()
             .register();
 

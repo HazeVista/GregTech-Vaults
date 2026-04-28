@@ -16,6 +16,6 @@ public class VaultLangHandler {
         provider.add(WirelessTerminalItem.KEY_VAULT_NOT_FOUND, "Vault not found at linked position.");
         provider.add(WirelessTerminalItem.KEY_TOOLTIP_LINKED, "Linked");
         provider.add(WirelessTerminalItem.KEY_TOOLTIP_NOT_LINKED, "Not linked");
-        provider.add(WirelessTerminalItem.KEY_TOOLTIP_HOW_TO_LINK, "Shift + right-click on vault to link");
+        provider.add(WirelessTerminalItem.KEY_TOOLTIP_HOW_TO_LINK, "Shift + right-click vault controller to link");
     }
 }
