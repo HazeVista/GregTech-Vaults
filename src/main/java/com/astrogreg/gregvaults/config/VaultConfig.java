@@ -63,6 +63,10 @@ public class VaultConfig {
             public int bronzeBaseSlots = 36;
 
             @Configurable
+            @Configurable.Comment({"Maximum number of interfaces for the Large Bronze Vault", "Default: 2"})
+            public int bronzeInterfaceLimit = 2;
+
+            @Configurable
             @Configurable.Comment({ "Whether wireless terminals can connect to the Large  Vault", "Default: true" })
             public boolean bronzeWireless = true;
 
@@ -75,6 +79,10 @@ public class VaultConfig {
             public int steelBaseSlots = 72;
 
             @Configurable
+            @Configurable.Comment({"Maximum number of interfaces for the Large  Vault", "Default: 4"})
+            public int steelInterfaceLimit = 4;
+
+            @Configurable
             @Configurable.Comment({ "Whether wireless terminals can connect to the Large Steel Vault", "Default: true" })
             public boolean steelWireless = true;
 
@@ -85,6 +93,10 @@ public class VaultConfig {
             @Configurable
             @Configurable.Comment({ "Base number of item slots for the Large Titanium Vault", "Default: 108" })
             public int titaniumBaseSlots = 108;
+
+            @Configurable
+            @Configurable.Comment({"Maximum number of interfaces for the Large Titanium Vault", "Default: 8"})
+            public int titaniumInterfaceLimit = 8;
 
             @Configurable
             @Configurable.Comment({ "Whether wireless terminals can connect to the Large Titanium Vault", "Default: true" })
