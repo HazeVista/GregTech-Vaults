@@ -1,5 +1,6 @@
 package com.astrogreg.gregvaults.recipe;
 
+import com.astrogreg.gregvaults.registry.VaultBlocks;
 import com.gregtechceu.gtceu.api.data.chemical.material.stack.MaterialEntry;
 import com.gregtechceu.gtceu.common.data.GTMachines;
 import com.gregtechceu.gtceu.data.recipe.CustomTags;
@@ -33,5 +34,17 @@ public class GTVaultsRecipes {
                 'B', CustomTags.HV_CIRCUITS, 'C', new MaterialEntry(rod, StainlessSteel), 'D',
                 GTMachines.TITANIUM_CRATE,
                 'E', new MaterialEntry(plateDouble, StainlessSteel));
+
+        VanillaRecipeHelper.addShapedRecipe(provider, false, GregTechVaults.id("mk1_core"),
+                VaultBlocks.VAULT_CORE_MK1.asStack(), "AhA", "BCB", "AwA", 'A', new MaterialEntry(plate, Bronze),
+                'B', new MaterialEntry(rodLong, Bronze), 'C', GTMachines.BRONZE_CRATE);
+
+        VanillaRecipeHelper.addShapedRecipe(provider, false, GregTechVaults.id("mk2_core"),
+                VaultBlocks.VAULT_CORE_MK2.asStack(), "AhA", "BCB", "AwA", 'A', new MaterialEntry(plate, Steel),
+                'B', new MaterialEntry(rodLong, Steel), 'C', GTMachines.STEEL_CRATE);
+
+        VanillaRecipeHelper.addShapedRecipe(provider, false, GregTechVaults.id("mk3_core"),
+                VaultBlocks.VAULT_CORE_MK3.asStack(), "AhA", "BCB", "AwA", 'A', new MaterialEntry(plate, Titanium),
+                'B', new MaterialEntry(rodLong, Titanium), 'C', GTMachines.TITANIUM_CRATE);
     }
 }
