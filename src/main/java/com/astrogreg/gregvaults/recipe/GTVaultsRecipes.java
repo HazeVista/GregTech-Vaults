@@ -1,7 +1,5 @@
 package com.astrogreg.gregvaults.recipe;
 
-import com.astrogreg.gregvaults.registry.VaultBlocks;
-import com.astrogreg.gregvaults.registry.VaultItems;
 import com.gregtechceu.gtceu.api.data.chemical.material.stack.MaterialEntry;
 import com.gregtechceu.gtceu.common.data.GTItems;
 import com.gregtechceu.gtceu.common.data.GTMachines;
@@ -11,6 +9,8 @@ import com.gregtechceu.gtceu.data.recipe.VanillaRecipeHelper;
 import net.minecraft.data.recipes.FinishedRecipe;
 
 import com.astrogreg.gregvaults.GregTechVaults;
+import com.astrogreg.gregvaults.registry.VaultBlocks;
+import com.astrogreg.gregvaults.registry.VaultItems;
 
 import java.util.function.Consumer;
 
