@@ -62,6 +62,32 @@ public class VaultMachineDefinition {
         };
     }
 
+    private static Component[] buildVaultTooltips(VaultTier tier) {
+        int baseSlots = switch (tier) {
+            case BRONZE -> VaultConfig.INSTANCE.vaultValues.bronzeVault.bronzeBaseSlots;
+            case STEEL -> VaultConfig.INSTANCE.vaultValues.steelVault.steelBaseSlots;
+            case TITANIUM -> VaultConfig.INSTANCE.vaultValues.titaniumVault.titaniumBaseSlots;
+        };
+        int interfaceLimit = switch (tier) {
+            case BRONZE -> VaultConfig.INSTANCE.vaultValues.bronzeVault.bronzeInterfaceLimit;
+            case STEEL -> VaultConfig.INSTANCE.vaultValues.steelVault.steelInterfaceLimit;
+            case TITANIUM -> VaultConfig.INSTANCE.vaultValues.titaniumVault.titaniumInterfaceLimit;
+        };
+        boolean wireless = switch (tier) {
+            case BRONZE -> VaultConfig.INSTANCE.vaultValues.bronzeVault.bronzeWireless;
+            case STEEL -> VaultConfig.INSTANCE.vaultValues.steelVault.steelWireless;
+            case TITANIUM -> VaultConfig.INSTANCE.vaultValues.titaniumVault.titaniumWireless;
+        };
+
+        return new Component[] {
+                Component.translatable("tooltip.gregtechvaults.base_slots", baseSlots),
+                Component.translatable("tooltip.gregtechvaults.interface_limit", interfaceLimit),
+                Component.translatable(wireless
+                        ? "tooltip.gregtechvaults.wireless_enabled"
+                        : "tooltip.gregtechvaults.wireless_disabled_tooltip"),
+        };
+    }
+
     private static MultiblockMachineDefinition registerVault(VaultTier tier) {
         var casingBlock = switch (tier) {
             case BRONZE -> GTBlocks.CASING_BRONZE_BRICKS;
@@ -88,11 +114,7 @@ public class VaultMachineDefinition {
         };
 
         return GregTechVaults.REGISTRATE.multiblock(name, holder -> new VaultMachine(holder, tier))
-                .tooltips(Component.translatable(switch (tier) {
-                    case BRONZE -> "tooltip.gregtechvaults.large_bronze_vault";
-                    case STEEL -> "tooltip.gregtechvaults.large_steel_vault";
-                    case TITANIUM -> "tooltip.gregtechvaults.large_titanium_vault";
-                }))
+                .tooltips(buildVaultTooltips(tier))
                 .rotationState(RotationState.ALL)
                 .rotationState(RotationState.ALL)
                 .appearanceBlock(casingBlock)

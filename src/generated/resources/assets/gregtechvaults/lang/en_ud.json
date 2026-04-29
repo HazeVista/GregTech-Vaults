@@ -16,9 +16,17 @@
   "message.gregtechvaults.vault_not_formed": "˙pǝɯɹoɟ ʇou sı ʇןnɐʌ ǝɥ⟘",
   "message.gregtechvaults.vault_not_found": "˙uoıʇısod pǝʞuıן ʇɐ punoɟ ʇou ʇןnɐΛ",
   "message.gregtechvaults.wireless_disabled": "˙ɹǝıʇ ʇןnɐΛ sıɥʇ ɹoɟ pǝןqɐsıp ǝɹɐ sןɐuıɯɹǝʇ ssǝןǝɹıM",
+  "tooltip.gregtechvaults.base_slots": "%d :sʇoןS ǝsɐᗺɐ§",
   "tooltip.gregtechvaults.emitter": "%s :ɹǝʇʇıɯƎ",
   "tooltip.gregtechvaults.how_to_link": "ʞuıן oʇ ʇןnɐʌ uo ʞɔıןɔ-ʇɥbıɹ + ʇɟıɥS",
+  "tooltip.gregtechvaults.interface_limit": "%d :sǝɔɐɟɹǝʇuI xɐWq§",
   "tooltip.gregtechvaults.linked": "pǝʞuƖıꞀ",
   "tooltip.gregtechvaults.not_linked": "pǝʞuıן ʇoN",
-  "tooltip.gregtechvaults.range": "sʞɔoןq %s :ǝbuɐᴚ"
+  "tooltip.gregtechvaults.range": "sʞɔoןq %s :ǝbuɐᴚ",
+  "tooltip.gregtechvaults.vault_core_mk1": "˙ʇןnɐʌ ǝɥʇ oʇ sʇoןs ɯǝʇıㄥ§ %d sppⱯㄥ§",
+  "tooltip.gregtechvaults.vault_core_mk2": "˙ʇןnɐʌ ǝɥʇ oʇ sʇoןs ɯǝʇıㄥ§ %d sppⱯㄥ§",
+  "tooltip.gregtechvaults.vault_core_mk3": "˙ʇןnɐʌ ǝɥʇ oʇ sʇoןs ɯǝʇıㄥ§ %d sppⱯㄥ§",
+  "tooltip.gregtechvaults.vault_interface": "˙sɯǝʇı pǝɹoʇs ɥʇıʍ ʇɔɐɹǝʇuı puɐ ʍǝıʌ oʇ sɯǝʇsʎs ןɐuɹǝʇxǝ sʍoןןⱯㄥ§",
+  "tooltip.gregtechvaults.wireless_disabled_tooltip": "pǝןqɐsıᗡㄣ§ :ןɐuıɯɹǝ⟘ ssǝןǝɹıM",
+  "tooltip.gregtechvaults.wireless_enabled": "pǝןqɐuƎɐ§ :ןɐuıɯɹǝ⟘ ssǝןǝɹıM"
 }

@@ -22,5 +22,14 @@ public class VaultLangHandler {
         provider.add(WirelessTerminalItem.KEY_TOOLTIP_EMITTER, "Emitter: %s");
         provider.add(WirelessTerminalItem.KEY_WIRELESS_DISABLED,
                 "Wireless terminals are disabled for this Vault tier.");
+        provider.add("tooltip.gregtechvaults.vault_interface",
+                "§7Allows external systems to view and interact with stored items.");
+        provider.add("tooltip.gregtechvaults.base_slots", "§aBase Slots: %d");
+        provider.add("tooltip.gregtechvaults.interface_limit", "§bMax Interfaces: %d");
+        provider.add("tooltip.gregtechvaults.wireless_enabled", "Wireless Terminal: §aEnabled");
+        provider.add("tooltip.gregtechvaults.wireless_disabled_tooltip", "Wireless Terminal: §4Disabled");
+        provider.add("tooltip.gregtechvaults.vault_core_mk1", "§7Adds %d §7item slots to the vault.");
+        provider.add("tooltip.gregtechvaults.vault_core_mk2", "§7Adds %d §7item slots to the vault.");
+        provider.add("tooltip.gregtechvaults.vault_core_mk3", "§7Adds %d §7item slots to the vault.");
     }
 }
