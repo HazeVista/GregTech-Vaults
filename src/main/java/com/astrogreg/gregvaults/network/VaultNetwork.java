@@ -30,5 +30,17 @@ public class VaultNetwork {
                 CPacketVaultSearch::encode,
                 CPacketVaultSearch::decode,
                 CPacketVaultSearch::handle);
+        CHANNEL.registerMessage(
+                id++,
+                CPacketVaultSort.class,
+                CPacketVaultSort::encode,
+                CPacketVaultSort::decode,
+                CPacketVaultSort::handle);
+        CHANNEL.registerMessage(
+                id++,
+                CPacketVaultOrganize.class,
+                CPacketVaultOrganize::encode,
+                CPacketVaultOrganize::decode,
+                CPacketVaultOrganize::handle);
     }
 }

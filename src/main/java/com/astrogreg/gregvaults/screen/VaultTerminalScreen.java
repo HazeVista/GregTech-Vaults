@@ -1,6 +1,7 @@
 package com.astrogreg.gregvaults.screen;
 
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
@@ -8,9 +9,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 
-import com.astrogreg.gregvaults.network.CPacketVaultScroll;
-import com.astrogreg.gregvaults.network.CPacketVaultSearch;
-import com.astrogreg.gregvaults.network.VaultNetwork;
+import com.astrogreg.gregvaults.network.*;
 
 public class VaultTerminalScreen extends AbstractContainerScreen<VaultTerminalMenu> {
 
@@ -49,6 +48,8 @@ public class VaultTerminalScreen extends AbstractContainerScreen<VaultTerminalMe
         this.imageHeight = menu.hotbarY + VaultTerminalMenu.SLOT_SIZE + 4;
     }
 
+    private VaultSortMode currentSort = VaultSortMode.NAME;
+
     @Override
     protected void init() {
         super.init();
@@ -59,7 +60,7 @@ public class VaultTerminalScreen extends AbstractContainerScreen<VaultTerminalMe
 
         searchBox = new EditBox(font,
                 leftPos + VaultTerminalMenu.SLOTS_X + 2, topPos + 5,
-                TEX_W - VaultTerminalMenu.SLOTS_X * 2 - 4, 10,
+                TEX_W - VaultTerminalMenu.SLOTS_X * 2 - 16, 10,
                 Component.empty());
         searchBox.setMaxLength(64);
         searchBox.setHint(Component.literal("Search..."));
@@ -72,6 +73,43 @@ public class VaultTerminalScreen extends AbstractContainerScreen<VaultTerminalMe
             VaultNetwork.CHANNEL.sendToServer(new CPacketVaultScroll(0));
         });
         addRenderableWidget(searchBox);
+
+        VaultTerminalMenu terminalMenu = menu;
+        Button[] sortBtnRef = new Button[1];
+        sortBtnRef[0] = Button.builder(
+                Component.literal(sortSymbol()),
+                btn -> {
+                    currentSort = currentSort.next();
+                    btn.setMessage(Component.literal(sortSymbol()));
+                    btn.setTooltip(net.minecraft.client.gui.components.Tooltip.create(
+                            Component.literal(currentSort.label())));
+                    terminalMenu.setSortMode(currentSort);
+                    VaultNetwork.CHANNEL.sendToServer(new CPacketVaultSort(currentSort));
+                })
+                .bounds(leftPos - 18, topPos + 3, 14, 14)
+                .tooltip(net.minecraft.client.gui.components.Tooltip.create(
+                        Component.literal(currentSort.label())))
+                .build();
+        addRenderableWidget(sortBtnRef[0]);
+
+        addRenderableWidget(Button.builder(
+                Component.literal("⇅"),
+                btn -> {
+                    terminalMenu.organize();
+                    VaultNetwork.CHANNEL.sendToServer(new CPacketVaultOrganize());
+                })
+                .bounds(leftPos - 18, topPos + 19, 14, 14)
+                .tooltip(net.minecraft.client.gui.components.Tooltip.create(
+                        Component.literal("Organize")))
+                .build());
+    }
+
+    private String sortSymbol() {
+        return switch (currentSort) {
+            case NAME -> "Az";
+            case COUNT_DESC -> "#↓";
+            case COUNT_ASC -> "#↑";
+        };
     }
 
     private int maxScroll() {

@@ -8,7 +8,10 @@
   "loader": "gtceu:machine",
   "machine": "gregtechvaults:large_bronze_vault",
   "texture_overrides": {
-    "all": "gtceu:block/casings/solid/machine_casing_bronze_plated_bricks"
+    "all": "gtceu:block/casings/solid/machine_casing_bronze_plated_bricks",
+    "bottom": "gtceu:block/casings/solid/machine_casing_bronze_plated_bricks",
+    "side": "gtceu:block/casings/solid/machine_casing_bronze_plated_bricks",
+    "top": "gtceu:block/casings/solid/machine_casing_bronze_plated_bricks"
   },
   "variants": {
     "is_formed=false,recipe_logic_status=idle": {

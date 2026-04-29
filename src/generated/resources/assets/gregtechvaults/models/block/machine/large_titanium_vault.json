@@ -8,7 +8,10 @@
   "loader": "gtceu:machine",
   "machine": "gregtechvaults:large_titanium_vault",
   "texture_overrides": {
-    "all": "gtceu:block/casings/solid/machine_casing_stable_titanium"
+    "all": "gtceu:block/casings/solid/machine_casing_stable_titanium",
+    "bottom": "gtceu:block/casings/solid/machine_casing_stable_titanium",
+    "side": "gtceu:block/casings/solid/machine_casing_stable_titanium",
+    "top": "gtceu:block/casings/solid/machine_casing_stable_titanium"
   },
   "variants": {
     "is_formed=false,recipe_logic_status=idle": {

@@ -30,6 +30,7 @@ public class VaultSlot extends SlotItemHandler {
         private final int windowSize;
 
         private int[] filteredIndices = null;
+        private int[] sortedIndices = null;  // sorted view of all slots
 
         public RemappingHandler(IItemHandler real, int windowSize) {
             this.real = real;
@@ -44,11 +45,18 @@ public class VaultSlot extends SlotItemHandler {
             this.filteredIndices = indices;
         }
 
+        public void setSortedIndices(int[] indices) {
+            this.sortedIndices = indices;
+        }
+
         private int realIndex(int visibleSlot) {
             int absolute = offset + visibleSlot;
             if (filteredIndices != null) {
                 if (absolute < 0 || absolute >= filteredIndices.length) return -1;
                 return filteredIndices[absolute];
+            } else if (sortedIndices != null) {
+                if (absolute < 0 || absolute >= sortedIndices.length) return -1;
+                return sortedIndices[absolute];
             } else {
                 if (absolute < 0 || absolute >= real.getSlots()) return -1;
                 return absolute;

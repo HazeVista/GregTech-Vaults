@@ -5,15 +5,20 @@
   "block.gregtechvaults.vault_core_mk1": "I ʞW ǝɹoƆ ʇןnɐΛ",
   "block.gregtechvaults.vault_core_mk2": "II ʞW ǝɹoƆ ʇןnɐΛ",
   "block.gregtechvaults.vault_core_mk3": "III ʞW ǝɹoƆ ʇןnɐΛ",
+  "block.gregtechvaults.vault_interface": "ǝɔɐɟɹǝʇuI ʇןnɐΛ",
   "gui.gregtechvaults.vault_terminal": "ןɐuıɯɹǝ⟘ ʇןnɐΛ",
   "item.gregtechvaults.wireless_vault_terminal": "ןɐuıɯɹǝ⟘ ʇןnɐΛ ssǝןǝɹıM",
   "message.gregtechvaults.different_dimension": "˙uoısuǝɯıp ʇuǝɹǝɟɟıp ɐ uı sı ʇןnɐΛ",
   "message.gregtechvaults.dimension_not_found": "˙punoɟ ʇou uoısuǝɯıp pǝʞuıꞀ",
+  "message.gregtechvaults.out_of_range": "˙)sʞɔoןq %d/%d( ǝbuɐɹ ɟo ʇnO",
   "message.gregtechvaults.terminal_not_linked": "˙ʇןnɐʌ ʎuɐ oʇ pǝʞuıן ʇou sı ןɐuıɯɹǝ⟘",
   "message.gregtechvaults.vault_linked": "¡pǝʞuıן ʇןnɐΛ",
   "message.gregtechvaults.vault_not_formed": "˙pǝɯɹoɟ ʇou sı ʇןnɐʌ ǝɥ⟘",
   "message.gregtechvaults.vault_not_found": "˙uoıʇısod pǝʞuıן ʇɐ punoɟ ʇou ʇןnɐΛ",
-  "tooltip.gregtechvaults.how_to_link": "ʞuıן oʇ ɹǝןןoɹʇuoɔ ʇןnɐʌ ʞɔıןɔ-ʇɥbıɹ + ʇɟıɥS",
-  "tooltip.gregtechvaults.linked": "pǝʞuıꞀ",
-  "tooltip.gregtechvaults.not_linked": "pǝʞuıן ʇoN"
+  "message.gregtechvaults.wireless_disabled": "˙ɹǝıʇ ʇןnɐΛ sıɥʇ ɹoɟ pǝןqɐsıp ǝɹɐ sןɐuıɯɹǝʇ ssǝןǝɹıM",
+  "tooltip.gregtechvaults.emitter": "%s :ɹǝʇʇıɯƎ",
+  "tooltip.gregtechvaults.how_to_link": "ʞuıן oʇ ʇןnɐʌ uo ʞɔıןɔ-ʇɥbıɹ + ʇɟıɥS",
+  "tooltip.gregtechvaults.linked": "pǝʞuƖıꞀ",
+  "tooltip.gregtechvaults.not_linked": "pǝʞuıן ʇoN",
+  "tooltip.gregtechvaults.range": "sʞɔoןq %s :ǝbuɐᴚ"
 }

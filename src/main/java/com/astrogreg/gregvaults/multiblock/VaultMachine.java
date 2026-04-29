@@ -2,8 +2,8 @@ package com.astrogreg.gregvaults.multiblock;
 
 import com.gregtechceu.gtceu.api.machine.IMachineBlockEntity;
 import com.gregtechceu.gtceu.api.machine.feature.IDropSaveMachine;
+import com.gregtechceu.gtceu.api.machine.feature.IMachineModifyDrops;
 import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
-import com.gregtechceu.gtceu.common.machine.multiblock.part.ItemBusPartMachine;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -16,9 +16,9 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
-import net.minecraftforge.items.ItemHandlerHelper;
 import net.minecraftforge.items.ItemStackHandler;
 import net.minecraftforge.network.NetworkHooks;
 
@@ -27,9 +27,11 @@ import com.astrogreg.gregvaults.blocks.VaultCoreBlock.CoreTier;
 import com.astrogreg.gregvaults.config.VaultConfig;
 import com.astrogreg.gregvaults.screen.VaultContainerMenu;
 
+import java.util.List;
+
 public class VaultMachine
                           extends MultiblockControllerMachine
-                          implements IDropSaveMachine {
+                          implements IDropSaveMachine, IMachineModifyDrops {
 
     public enum VaultTier {
 
@@ -50,6 +52,14 @@ public class VaultMachine
                 case BRONZE -> VaultConfig.INSTANCE.vaultValues.bronzeVault.bronzeBaseSlots;
                 case STEEL -> VaultConfig.INSTANCE.vaultValues.steelVault.steelBaseSlots;
                 case TITANIUM -> VaultConfig.INSTANCE.vaultValues.titaniumVault.titaniumBaseSlots;
+            };
+        }
+
+        public boolean wirelessAllowed() {
+            return switch (this) {
+                case BRONZE -> VaultConfig.INSTANCE.vaultValues.bronzeVault.bronzeWireless;
+                case STEEL -> VaultConfig.INSTANCE.vaultValues.steelVault.steelWireless;
+                case TITANIUM -> VaultConfig.INSTANCE.vaultValues.titaniumVault.titaniumWireless;
             };
         }
     }
@@ -96,7 +106,7 @@ public class VaultMachine
             kickPlayersAndResize(newSlots);
         }
 
-        subscribeServerTick(this::transferFromBus);
+        subscribeServerTick(this::onServerTick);
     }
 
     @Override
@@ -184,6 +194,34 @@ public class VaultMachine
         }
     }
 
+    @Override
+    public boolean saveBreak() {
+        return false;
+    }
+
+    @Override
+    public void onDrops(List<ItemStack> drops) {
+        dropInventoryContents(drops);
+    }
+
+    private void dropInventoryContents(List<ItemStack> drops) {
+        if (itemHandler == null || itemHandler.getSlots() <= 0) {
+            return;
+        }
+
+        for (int slot = 0; slot < itemHandler.getSlots(); slot++) {
+            ItemStack stack = itemHandler.getStackInSlot(slot);
+            if (stack.isEmpty()) {
+                continue;
+            }
+
+            drops.add(stack.copy());
+            itemHandler.setStackInSlot(slot, ItemStack.EMPTY);
+        }
+
+        markDirty();
+    }
+
     private int countSlots() {
         if (getLevel() == null) return vaultTier.baseSlots();
 
@@ -223,18 +261,5 @@ public class VaultMachine
         return slots;
     }
 
-    private void transferFromBus() {
-        if (!isFormed()) return;
-        for (var part : getParts()) {
-            if (part.self() instanceof ItemBusPartMachine bus) {
-                var busInv = bus.getInventory().storage;
-                for (int i = 0; i < busInv.getSlots(); i++) {
-                    var stack = busInv.getStackInSlot(i);
-                    if (stack.isEmpty()) continue;
-                    var remaining = ItemHandlerHelper.insertItemStacked(itemHandler, stack, false);
-                    busInv.setStackInSlot(i, remaining);
-                }
-            }
-        }
-    }
+    private void onServerTick() {}
 }

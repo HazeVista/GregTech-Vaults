@@ -3,10 +3,12 @@
   "package": "com.astrogreg.gregvaults.mixin",
   "compatibilityLevel": "JAVA_17",
   "minVersion": "0.8",
+  "refmap": "mixins.gregtechvaults.refmap.json",
   "mixins": [
     "DummyMixin"
   ],
   "client": [
+    "MixinMachineModel"
   ],
   "injectors": {
     "defaultRequire": 1

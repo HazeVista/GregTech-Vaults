@@ -5,15 +5,20 @@
   "block.gregtechvaults.vault_core_mk1": "Vault Core MK I",
   "block.gregtechvaults.vault_core_mk2": "Vault Core MK II",
   "block.gregtechvaults.vault_core_mk3": "Vault Core MK III",
+  "block.gregtechvaults.vault_interface": "Vault Interface",
   "gui.gregtechvaults.vault_terminal": "Vault Terminal",
   "item.gregtechvaults.wireless_vault_terminal": "Wireless Vault Terminal",
   "message.gregtechvaults.different_dimension": "Vault is in a different dimension.",
   "message.gregtechvaults.dimension_not_found": "Linked dimension not found.",
+  "message.gregtechvaults.out_of_range": "Out of range (%d/%d blocks).",
   "message.gregtechvaults.terminal_not_linked": "Terminal is not linked to any vault.",
   "message.gregtechvaults.vault_linked": "Vault linked!",
   "message.gregtechvaults.vault_not_formed": "The vault is not formed.",
   "message.gregtechvaults.vault_not_found": "Vault not found at linked position.",
-  "tooltip.gregtechvaults.how_to_link": "Shift + right-click vault controller to link",
-  "tooltip.gregtechvaults.linked": "Linked",
-  "tooltip.gregtechvaults.not_linked": "Not linked"
+  "message.gregtechvaults.wireless_disabled": "Wireless terminals are disabled for this Vault tier.",
+  "tooltip.gregtechvaults.emitter": "Emitter: %s",
+  "tooltip.gregtechvaults.how_to_link": "Shift + right-click on vault to link",
+  "tooltip.gregtechvaults.linked": "Li1nked",
+  "tooltip.gregtechvaults.not_linked": "Not linked",
+  "tooltip.gregtechvaults.range": "Range: %s blocks"
 }

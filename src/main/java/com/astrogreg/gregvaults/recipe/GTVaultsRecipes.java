@@ -7,10 +7,14 @@ import com.gregtechceu.gtceu.data.recipe.CustomTags;
 import com.gregtechceu.gtceu.data.recipe.VanillaRecipeHelper;
 
 import net.minecraft.data.recipes.FinishedRecipe;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraftforge.registries.ForgeRegistries;
 
 import com.astrogreg.gregvaults.GregTechVaults;
+import com.astrogreg.gregvaults.items.WirelessTerminalItem.EmitterTier;
 import com.astrogreg.gregvaults.registry.VaultBlocks;
 import com.astrogreg.gregvaults.registry.VaultItems;
+import com.google.gson.JsonObject;
 
 import java.util.function.Consumer;
 
@@ -52,5 +56,49 @@ public class GTVaultsRecipes {
                 VaultItems.WIRELESS_VAULT_TERMINAL.asStack(), "AAA", "CBD", "EdE", 'A',
                 new MaterialEntry(plate, Steel), 'B', new MaterialEntry(plate, Glass), 'C', GTItems.EMITTER_LV,
                 'D', GTItems.SENSOR_LV, 'E', new MaterialEntry(screw, Steel));
+
+        addEmitterUpgrade(provider, EmitterTier.LV, GTItems.EMITTER_LV.get());
+        addEmitterUpgrade(provider, EmitterTier.MV, GTItems.EMITTER_MV.get());
+        addEmitterUpgrade(provider, EmitterTier.HV, GTItems.EMITTER_HV.get());
+        addEmitterUpgrade(provider, EmitterTier.EV, GTItems.EMITTER_EV.get());
+        addEmitterUpgrade(provider, EmitterTier.IV, GTItems.EMITTER_IV.get());
+        addEmitterUpgrade(provider, EmitterTier.LUV, GTItems.EMITTER_LuV.get());
+        addEmitterUpgrade(provider, EmitterTier.ZPM, GTItems.EMITTER_ZPM.get());
+        addEmitterUpgrade(provider, EmitterTier.UV, GTItems.EMITTER_UV.get());
+    }
+
+    private static void addEmitterUpgrade(Consumer<FinishedRecipe> provider,
+                                          EmitterTier tier, net.minecraft.world.item.Item emitterItem) {
+        ResourceLocation recipeId = GregTechVaults.id("terminal_emitter_" + tier.name().toLowerCase());
+        ResourceLocation emitterId = ForgeRegistries.ITEMS.getKey(emitterItem);
+
+        provider.accept(new FinishedRecipe() {
+
+            @Override
+            public void serializeRecipeData(JsonObject json) {
+                json.addProperty("tier", tier.level);
+                json.addProperty("emitter", emitterId.toString());
+            }
+
+            @Override
+            public ResourceLocation getId() {
+                return recipeId;
+            }
+
+            @Override
+            public net.minecraft.world.item.crafting.RecipeSerializer<?> getType() {
+                return VaultRecipes.EMITTER_UPGRADE_SERIALIZER.get();
+            }
+
+            @Override
+            public @org.jetbrains.annotations.Nullable JsonObject serializeAdvancement() {
+                return null;
+            }
+
+            @Override
+            public @org.jetbrains.annotations.Nullable ResourceLocation getAdvancementId() {
+                return null;
+            }
+        });
     }
 }
