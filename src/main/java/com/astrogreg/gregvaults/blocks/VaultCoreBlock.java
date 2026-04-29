@@ -1,12 +1,13 @@
 package com.astrogreg.gregvaults.blocks;
 
-import com.astrogreg.gregvaults.config.VaultConfig;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
+
+import com.astrogreg.gregvaults.config.VaultConfig;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -34,8 +35,7 @@ public class VaultCoreBlock extends Block {
         int slots = VaultConfig.getSlotValue(this.tier);
         tooltip.add(Component.translatable(
                 "tooltip.gregtechvaults.vault_core_" + tier.name().toLowerCase(),
-                slots
-        ));
+                slots));
         super.appendHoverText(stack, level, tooltip, flag);
     }
 

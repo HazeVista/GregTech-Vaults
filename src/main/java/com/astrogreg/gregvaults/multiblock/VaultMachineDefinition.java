@@ -82,9 +82,8 @@ public class VaultMachineDefinition {
         return new Component[] {
                 Component.translatable("tooltip.gregtechvaults.base_slots", baseSlots),
                 Component.translatable("tooltip.gregtechvaults.interface_limit", interfaceLimit),
-                Component.translatable(wireless
-                        ? "tooltip.gregtechvaults.wireless_enabled"
-                        : "tooltip.gregtechvaults.wireless_disabled_tooltip"),
+                Component.translatable(wireless ? "tooltip.gregtechvaults.wireless_enabled" :
+                        "tooltip.gregtechvaults.wireless_disabled_tooltip"),
         };
     }
 

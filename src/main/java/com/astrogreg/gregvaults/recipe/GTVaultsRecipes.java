@@ -1,6 +1,5 @@
 package com.astrogreg.gregvaults.recipe;
 
-import com.astrogreg.gregvaults.registry.VaultMachines;
 import com.gregtechceu.gtceu.api.data.chemical.material.stack.MaterialEntry;
 import com.gregtechceu.gtceu.common.data.GTBlocks;
 import com.gregtechceu.gtceu.common.data.GTItems;
@@ -16,6 +15,7 @@ import com.astrogreg.gregvaults.GregTechVaults;
 import com.astrogreg.gregvaults.items.WirelessTerminalItem.EmitterTier;
 import com.astrogreg.gregvaults.registry.VaultBlocks;
 import com.astrogreg.gregvaults.registry.VaultItems;
+import com.astrogreg.gregvaults.registry.VaultMachines;
 import com.google.gson.JsonObject;
 
 import java.util.function.Consumer;
