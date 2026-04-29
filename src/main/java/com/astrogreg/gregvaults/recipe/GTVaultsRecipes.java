@@ -1,6 +1,8 @@
 package com.astrogreg.gregvaults.recipe;
 
+import com.astrogreg.gregvaults.registry.VaultMachines;
 import com.gregtechceu.gtceu.api.data.chemical.material.stack.MaterialEntry;
+import com.gregtechceu.gtceu.common.data.GTBlocks;
 import com.gregtechceu.gtceu.common.data.GTItems;
 import com.gregtechceu.gtceu.common.data.GTMachines;
 import com.gregtechceu.gtceu.data.recipe.CustomTags;
@@ -22,6 +24,7 @@ import static com.astrogreg.gregvaults.multiblock.VaultMachineDefinition.*;
 import static com.gregtechceu.gtceu.api.data.tag.TagPrefix.*;
 import static com.gregtechceu.gtceu.common.data.GTMaterials.*;
 
+@SuppressWarnings("all")
 public class GTVaultsRecipes {
 
     public static void init(Consumer<FinishedRecipe> provider) {
@@ -56,6 +59,10 @@ public class GTVaultsRecipes {
                 VaultItems.WIRELESS_VAULT_TERMINAL.asStack(), "AAA", "CBD", "EdE", 'A',
                 new MaterialEntry(plate, Steel), 'B', new MaterialEntry(plate, Glass), 'C', GTItems.EMITTER_LV,
                 'D', GTItems.SENSOR_LV, 'E', new MaterialEntry(screw, Steel));
+
+        VanillaRecipeHelper.addShapedRecipe(provider, false, GregTechVaults.id("vault_interface"),
+                VaultMachines.VAULT_INTERFACE.asStack(), "w", "B", "A", 'A', GTBlocks.BRONZE_HULL,
+                'B', new MaterialEntry(pipeNormalFluid, Bronze));
 
         addEmitterUpgrade(provider, EmitterTier.LV, GTItems.EMITTER_LV.get());
         addEmitterUpgrade(provider, EmitterTier.MV, GTItems.EMITTER_MV.get());
