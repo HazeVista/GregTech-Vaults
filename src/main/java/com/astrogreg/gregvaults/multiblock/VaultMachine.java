@@ -4,6 +4,7 @@ import com.gregtechceu.gtceu.api.machine.IMachineBlockEntity;
 import com.gregtechceu.gtceu.api.machine.feature.IDropSaveMachine;
 import com.gregtechceu.gtceu.api.machine.feature.IMachineModifyDrops;
 import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
+import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiPart;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -26,12 +27,13 @@ import com.astrogreg.gregvaults.blocks.VaultCoreBlock;
 import com.astrogreg.gregvaults.blocks.VaultCoreBlock.CoreTier;
 import com.astrogreg.gregvaults.config.VaultConfig;
 import com.astrogreg.gregvaults.screen.VaultContainerMenu;
+import com.astrogreg.gregvaults.screen.VaultTerminalMenu;
 
 import java.util.List;
 
 public class VaultMachine
-                          extends MultiblockControllerMachine
-                          implements IDropSaveMachine, IMachineModifyDrops {
+        extends MultiblockControllerMachine
+        implements IDropSaveMachine, IMachineModifyDrops {
 
     public enum VaultTier {
 
@@ -106,6 +108,12 @@ public class VaultMachine
             kickPlayersAndResize(newSlots);
         }
 
+        for (IMultiPart part : getParts()) {
+            if (part instanceof VaultInterfacePart iface) {
+                iface.refreshHandlerFromVault();
+            }
+        }
+
         subscribeServerTick(this::onServerTick);
     }
 
@@ -119,8 +127,12 @@ public class VaultMachine
     private void kickPlayers() {
         if (getLevel() instanceof ServerLevel serverLevel) {
             for (ServerPlayer sp : serverLevel.players()) {
-                if (sp.containerMenu instanceof VaultContainerMenu menu &&
-                        menu.vaultHandler == this.itemHandler) {
+                boolean shouldKick =
+                        (sp.containerMenu instanceof VaultContainerMenu menu &&
+                                menu.vaultHandler == this.itemHandler) ||
+                                (sp.containerMenu instanceof VaultTerminalMenu tMenu &&
+                                        tMenu.vaultHandler == this.itemHandler);
+                if (shouldKick) {
                     sp.closeContainer();
                 }
             }
@@ -144,12 +156,12 @@ public class VaultMachine
 
     @Override
     public InteractionResult onUse(
-                                   BlockState state,
-                                   net.minecraft.world.level.Level level,
-                                   BlockPos pos,
-                                   Player player,
-                                   InteractionHand hand,
-                                   BlockHitResult hit) {
+            BlockState state,
+            net.minecraft.world.level.Level level,
+            BlockPos pos,
+            Player player,
+            InteractionHand hand,
+            BlockHitResult hit) {
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
             if (!isFormed()) {
                 return InteractionResult.PASS;
@@ -162,26 +174,52 @@ public class VaultMachine
         return InteractionResult.sidedSuccess(level.isClientSide);
     }
 
+    private void serializeItemsToTag(CompoundTag tag) {
+        net.minecraft.nbt.ListTag list = new net.minecraft.nbt.ListTag();
+        for (int i = 0; i < itemHandler.getSlots(); i++) {
+            net.minecraft.world.item.ItemStack stack = itemHandler.getStackInSlot(i);
+            if (stack.isEmpty()) continue;
+            net.minecraft.nbt.CompoundTag entry = new net.minecraft.nbt.CompoundTag();
+            entry.putInt("Slot", i);
+            stack.save(entry);
+            list.add(entry);
+        }
+        tag.put("VaultSlots", list);
+        tag.putInt("TotalSlots", totalSlots);
+        tag.remove("VaultItems");
+    }
+
+    private void deserializeItemsFromTag(CompoundTag tag) {
+        if (tag.contains("VaultSlots", net.minecraft.nbt.Tag.TAG_LIST)) {
+            net.minecraft.nbt.ListTag list = tag.getList("VaultSlots", net.minecraft.nbt.Tag.TAG_COMPOUND);
+            for (int i = 0; i < list.size(); i++) {
+                net.minecraft.nbt.CompoundTag entry = list.getCompound(i);
+                int slot = entry.getInt("Slot");
+                if (slot >= 0 && slot < itemHandler.getSlots()) {
+                    itemHandler.setStackInSlot(slot, net.minecraft.world.item.ItemStack.of(entry));
+                }
+            }
+        } else if (tag.contains("VaultItems", net.minecraft.nbt.Tag.TAG_COMPOUND)) {
+            itemHandler.deserializeNBT(tag.getCompound("VaultItems"));
+        }
+    }
+
     @Override
     public void saveToItem(CompoundTag tag) {
-        tag.put("VaultItems", itemHandler.serializeNBT());
-        tag.putInt("TotalSlots", totalSlots);
+        serializeItemsToTag(tag);
     }
 
     @Override
     public void loadFromItem(CompoundTag tag) {
         totalSlots = tag.getInt("TotalSlots");
         itemHandler = createHandler(Math.max(totalSlots, 0));
-        if (tag.contains("VaultItems")) {
-            itemHandler.deserializeNBT(tag.getCompound("VaultItems"));
-        }
+        deserializeItemsFromTag(tag);
     }
 
     @Override
     public void saveCustomPersistedData(CompoundTag tag, boolean forDrop) {
         super.saveCustomPersistedData(tag, forDrop);
-        tag.put("VaultItems", itemHandler.serializeNBT());
-        tag.putInt("TotalSlots", totalSlots);
+        serializeItemsToTag(tag);
     }
 
     @Override
@@ -189,9 +227,7 @@ public class VaultMachine
         super.loadCustomPersistedData(tag);
         totalSlots = tag.getInt("TotalSlots");
         itemHandler = createHandler(Math.max(totalSlots, 0));
-        if (tag.contains("VaultItems")) {
-            itemHandler.deserializeNBT(tag.getCompound("VaultItems"));
-        }
+        deserializeItemsFromTag(tag);
     }
 
     @Override
@@ -211,15 +247,46 @@ public class VaultMachine
 
         for (int slot = 0; slot < itemHandler.getSlots(); slot++) {
             ItemStack stack = itemHandler.getStackInSlot(slot);
-            if (stack.isEmpty()) {
-                continue;
+            if (stack.isEmpty()) continue;
+            while (!stack.isEmpty()) {
+                int take = Math.min(stack.getMaxStackSize(), stack.getCount());
+                drops.add(stack.copyWithCount(take));
+                stack.shrink(take);
             }
-
-            drops.add(stack.copy());
             itemHandler.setStackInSlot(slot, ItemStack.EMPTY);
         }
-
         markDirty();
+    }
+
+    @Override
+    public void onUnload() {
+        super.onUnload();
+        if (getLevel() == null || getLevel().isClientSide() || itemHandler == null) return;
+        if (!(getLevel() instanceof ServerLevel serverLevel)) return;
+
+        boolean hasItems = false;
+        for (int i = 0; i < itemHandler.getSlots(); i++) {
+            if (!itemHandler.getStackInSlot(i).isEmpty()) { hasItems = true; break; }
+        }
+        if (!hasItems) return;
+
+        net.minecraft.core.BlockPos pos = getPos();
+        for (int i = 0; i < itemHandler.getSlots(); i++) {
+            ItemStack stack = itemHandler.getStackInSlot(i);
+            if (stack.isEmpty()) continue;
+            while (!stack.isEmpty()) {
+                int take = Math.min(stack.getMaxStackSize(), stack.getCount());
+                net.minecraft.world.entity.item.ItemEntity entity =
+                        new net.minecraft.world.entity.item.ItemEntity(
+                                serverLevel,
+                                pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
+                                stack.copyWithCount(take));
+                entity.setDefaultPickUpDelay();
+                serverLevel.addFreshEntity(entity);
+                stack.shrink(take);
+            }
+            itemHandler.setStackInSlot(i, ItemStack.EMPTY);
+        }
     }
 
     private int countSlots() {

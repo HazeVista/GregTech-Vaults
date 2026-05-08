@@ -109,36 +109,36 @@ public class VaultContainerMenu extends AbstractContainerMenu {
     }
 
     public VaultContainerMenu(
-                              int windowId,
-                              Inventory playerInv,
-                              IItemHandler vaultHandler) {
+            int windowId,
+            Inventory playerInv,
+            IItemHandler vaultHandler) {
         this(VaultMenuTypes.VAULT_MENU.get(), windowId, playerInv, vaultHandler);
     }
 
     protected VaultContainerMenu(
-                                 MenuType<?> menuType,
-                                 int windowId,
-                                 Inventory playerInv,
-                                 IItemHandler vaultHandler) {
+            MenuType<?> menuType,
+            int windowId,
+            Inventory playerInv,
+            IItemHandler vaultHandler) {
         this(menuType, windowId, playerInv, vaultHandler, 0);
     }
 
     protected VaultContainerMenu(
-                                 MenuType<?> menuType,
-                                 int windowId,
-                                 Inventory playerInv,
-                                 IItemHandler vaultHandler,
-                                 int extraPlayerYOffset) {
+            MenuType<?> menuType,
+            int windowId,
+            Inventory playerInv,
+            IItemHandler vaultHandler,
+            int extraPlayerYOffset) {
         this(menuType, windowId, playerInv, vaultHandler, extraPlayerYOffset, MAX_ROWS);
     }
 
     protected VaultContainerMenu(
-                                 MenuType<?> menuType,
-                                 int windowId,
-                                 Inventory playerInv,
-                                 IItemHandler vaultHandler,
-                                 int extraPlayerYOffset,
-                                 int maxRows) {
+            MenuType<?> menuType,
+            int windowId,
+            Inventory playerInv,
+            IItemHandler vaultHandler,
+            int extraPlayerYOffset,
+            int maxRows) {
         super(menuType, windowId);
         this.vaultHandler = vaultHandler;
         this.totalSlots = vaultHandler.getSlots();
@@ -182,9 +182,9 @@ public class VaultContainerMenu extends AbstractContainerMenu {
     }
 
     public VaultContainerMenu(
-                              int windowId,
-                              Inventory playerInv,
-                              FriendlyByteBuf buf) {
+            int windowId,
+            Inventory playerInv,
+            FriendlyByteBuf buf) {
         this(windowId, playerInv, new ItemStackHandler(buf.readInt()));
     }
 
@@ -234,12 +234,10 @@ public class VaultContainerMenu extends AbstractContainerMenu {
 
     @Override
     public void initializeContents(
-                                   int stateId,
-                                   java.util.List<ItemStack> items,
-                                   ItemStack carried) {
+            int stateId,
+            java.util.List<ItemStack> items,
+            ItemStack carried) {
         if (items.size() > this.slots.size()) {
-            net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
-            if (mc.player != null) mc.player.closeContainer();
             return;
         }
         super.initializeContents(stateId, items, carried);
@@ -255,12 +253,40 @@ public class VaultContainerMenu extends AbstractContainerMenu {
         if (index < vaultCount) {
             if (!moveItemStackTo(stack, vaultCount, slots.size(), true)) return ItemStack.EMPTY;
         } else {
-            if (!moveItemStackTo(stack, 0, vaultCount, false)) return ItemStack.EMPTY;
+            stack = insertIntoFullVault(stack);
+            if (stack.getCount() == original.getCount()) return ItemStack.EMPTY;
         }
         if (stack.isEmpty()) slot.set(ItemStack.EMPTY);
         else slot.setChanged();
-        if (stack.getCount() == original.getCount()) return ItemStack.EMPTY;
+        slot.set(stack.isEmpty() ? ItemStack.EMPTY : stack);
         slot.onTake(player, stack);
         return original;
+    }
+
+    protected ItemStack insertIntoFullVault(ItemStack stack) {
+        if (!(vaultHandler instanceof net.minecraftforge.items.ItemStackHandler handler)) {
+            moveItemStackTo(stack, 0, getVisibleSlotCount(), false);
+            return stack;
+        }
+        int slots = handler.getSlots();
+        for (int i = 0; i < slots && !stack.isEmpty(); i++) {
+            ItemStack existing = handler.getStackInSlot(i);
+            if (existing.isEmpty() || !ItemStack.isSameItemSameTags(existing, stack)) continue;
+            int limit = Math.min(handler.getSlotLimit(i), existing.getMaxStackSize());
+            int canFit = limit - existing.getCount();
+            if (canFit <= 0) continue;
+            int moved = Math.min(canFit, stack.getCount());
+            existing.grow(moved);
+            stack.shrink(moved);
+            handler.setStackInSlot(i, existing);
+        }
+        for (int i = 0; i < slots && !stack.isEmpty(); i++) {
+            if (!handler.getStackInSlot(i).isEmpty()) continue;
+            int limit = Math.min(handler.getSlotLimit(i), stack.getMaxStackSize());
+            int moved = Math.min(limit, stack.getCount());
+            handler.setStackInSlot(i, stack.copyWithCount(moved));
+            stack.shrink(moved);
+        }
+        return stack;
     }
 }

@@ -252,26 +252,101 @@ public class VaultTerminalMenu extends AbstractContainerMenu {
         int craftEnd = craftingOutputStart;
         int craftOut = craftingOutputStart;
         if (index == craftOut) {
-            if (!moveItemStackTo(stack, 0, vaultEnd, false) &&
-                    !moveItemStackTo(stack, invStart, invEnd, true))
-                return ItemStack.EMPTY;
-            slot.onQuickCraft(stack, original);
+            if (!slot.hasItem()) return ItemStack.EMPTY;
+            ItemStack result = slot.getItem();
+            int craftCount = howManyCrafts(result.getMaxStackSize());
+            if (craftCount <= 0) return ItemStack.EMPTY;
+
+            ItemStack collected = result.copyWithCount(craftCount);
+            slot.set(result.getCount() > craftCount
+                    ? result.copyWithCount(result.getCount() - craftCount)
+                    : ItemStack.EMPTY);
+
+            consumeIngredients(craftCount);
+
+            updateCraftingResult();
+
+            if (!moveItemStackTo(collected, invStart, invEnd, true) && !collected.isEmpty()) {
+                insertIntoFullVault(collected);
+            }
+            return original;
         } else if (index < vaultEnd) {
             if (!moveItemStackTo(stack, invStart, invEnd, true)) return ItemStack.EMPTY;
         } else if (index >= craftStart && index < craftEnd) {
-            if (!moveItemStackTo(stack, 0, vaultEnd, false) &&
-                    !moveItemStackTo(stack, invStart, invEnd, true))
-                return ItemStack.EMPTY;
+            stack = insertIntoFullVault(stack);
+            if (!stack.isEmpty()) moveItemStackTo(stack, invStart, invEnd, true);
         } else {
-            if (!moveItemStackTo(stack, 0, vaultEnd, false) &&
-                    !moveItemStackTo(stack, craftStart, craftEnd, false))
-                return ItemStack.EMPTY;
+            ItemStack remaining = insertIntoFullVault(stack.copy());
+            int moved = stack.getCount() - remaining.getCount();
+            stack.shrink(moved);
+            if (!stack.isEmpty()) moveItemStackTo(stack, craftStart, craftEnd, false);
         }
+        if (stack.getCount() == original.getCount()) return ItemStack.EMPTY;
         if (stack.isEmpty()) slot.set(ItemStack.EMPTY);
         else slot.setChanged();
-        if (stack.getCount() == original.getCount()) return ItemStack.EMPTY;
-        slot.onTake(player, stack);
         return original;
+    }
+
+    private int howManyCrafts(int maxCount) {
+        int crafts = maxCount;
+        for (int i = 0; i < craftingGrid.getContainerSize(); i++) {
+            ItemStack ingredient = craftingGrid.getItem(i);
+            if (ingredient.isEmpty()) continue;
+            if (ingredient.isDamageableItem()) continue;
+            if (ingredient.getItem().hasCraftingRemainingItem()) continue;
+            crafts = Math.min(crafts, ingredient.getCount());
+        }
+        return crafts;
+    }
+
+    private void consumeIngredients(int times) {
+        for (int i = 0; i < craftingGrid.getContainerSize(); i++) {
+            ItemStack ingredient = craftingGrid.getItem(i);
+            if (ingredient.isEmpty()) continue;
+
+            if (ingredient.isDamageableItem()) {
+                int newDamage = ingredient.getDamageValue() + times;
+                if (newDamage >= ingredient.getMaxDamage()) {
+                    craftingGrid.setItem(i, ItemStack.EMPTY);
+                } else {
+                    ingredient.setDamageValue(newDamage);
+                    craftingGrid.setItem(i, ingredient);
+                }
+            } else if (ingredient.getItem().hasCraftingRemainingItem()) {
+                ItemStack container = new ItemStack(ingredient.getItem().getCraftingRemainingItem());
+                craftingGrid.setItem(i, container);
+            } else {
+                ingredient.shrink(times);
+                craftingGrid.setItem(i, ingredient.isEmpty() ? ItemStack.EMPTY : ingredient);
+            }
+        }
+    }
+
+    private ItemStack insertIntoFullVault(ItemStack stack) {
+        if (!(vaultHandler instanceof net.minecraftforge.items.ItemStackHandler handler)) {
+            moveItemStackTo(stack, 0, getVisibleSlotCount(), false);
+            return stack;
+        }
+        int slots = handler.getSlots();
+        for (int i = 0; i < slots && !stack.isEmpty(); i++) {
+            ItemStack existing = handler.getStackInSlot(i);
+            if (existing.isEmpty() || !ItemStack.isSameItemSameTags(existing, stack)) continue;
+            int limit = Math.min(handler.getSlotLimit(i), existing.getMaxStackSize());
+            int canFit = limit - existing.getCount();
+            if (canFit <= 0) continue;
+            int moved = Math.min(canFit, stack.getCount());
+            existing.grow(moved);
+            stack.shrink(moved);
+            handler.setStackInSlot(i, existing);
+        }
+        for (int i = 0; i < slots && !stack.isEmpty(); i++) {
+            if (!handler.getStackInSlot(i).isEmpty()) continue;
+            int limit = Math.min(handler.getSlotLimit(i), stack.getMaxStackSize());
+            int moved = Math.min(limit, stack.getCount());
+            handler.setStackInSlot(i, stack.copyWithCount(moved));
+            stack.shrink(moved);
+        }
+        return stack;
     }
 
     @Override

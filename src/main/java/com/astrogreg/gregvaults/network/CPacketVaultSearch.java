@@ -5,6 +5,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 
 import com.astrogreg.gregvaults.screen.VaultContainerMenu;
+import com.astrogreg.gregvaults.screen.VaultTerminalMenu;
 
 import java.util.function.Supplier;
 
@@ -27,7 +28,11 @@ public class CPacketVaultSearch {
     public static void handle(CPacketVaultSearch packet, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             ServerPlayer player = ctx.get().getSender();
-            if (player != null && player.containerMenu instanceof VaultContainerMenu menu) {
+            if (player == null) return;
+            if (player.containerMenu instanceof VaultTerminalMenu menu) {
+                menu.updateSearch(packet.query);
+                menu.updateScroll(0);
+            } else if (player.containerMenu instanceof VaultContainerMenu menu) {
                 menu.updateSearch(packet.query);
                 menu.updateScroll(0);
             }

@@ -201,6 +201,10 @@ public class VaultInterfacePart extends MultiblockPartMachine {
         notifyBlockUpdate();
     }
 
+    public void refreshHandlerFromVault() {
+        handlerTrait.updateHandler();
+    }
+
     public void cycleItemMode(@NotNull Direction side) {
         if (itemFacing != side) {
             configureItemSide(side, ItemIoMode.INPUT);
@@ -226,8 +230,8 @@ public class VaultInterfacePart extends MultiblockPartMachine {
         } else {
             cycleItemMode(gridSide);
             player.displayClientMessage(Component.literal(
-                    itemIoMode == ItemIoMode.DISABLED ? "Vault Interface: disabled" :
-                            "Vault Interface: " + itemIoMode.displayName() + " on " + gridSide.getName()),
+                            itemIoMode == ItemIoMode.DISABLED ? "Vault Interface: disabled" :
+                                    "Vault Interface: " + itemIoMode.displayName() + " on " + gridSide.getName()),
                     true);
         }
 
