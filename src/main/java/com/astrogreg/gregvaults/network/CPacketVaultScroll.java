@@ -5,6 +5,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 
 import com.astrogreg.gregvaults.screen.VaultContainerMenu;
+import com.astrogreg.gregvaults.screen.VaultTerminalMenu;
 
 import java.util.function.Supplier;
 
@@ -25,17 +26,17 @@ public class CPacketVaultScroll {
     }
 
     public static void handle(
-                              CPacketVaultScroll packet,
-                              Supplier<NetworkEvent.Context> ctx) {
-        ctx
-                .get()
-                .enqueueWork(() -> {
-                    ServerPlayer player = ctx.get().getSender();
-                    if (player != null &&
-                            player.containerMenu instanceof VaultContainerMenu menu) {
-                        menu.updateScroll(packet.scrollRow);
-                    }
-                });
+            CPacketVaultScroll packet,
+            Supplier<NetworkEvent.Context> ctx) {
+        ctx.get().enqueueWork(() -> {
+            ServerPlayer player = ctx.get().getSender();
+            if (player == null) return;
+            if (player.containerMenu instanceof VaultTerminalMenu menu) {
+                menu.updateScroll(packet.scrollRow);
+            } else if (player.containerMenu instanceof VaultContainerMenu menu) {
+                menu.updateScroll(packet.scrollRow);
+            }
+        });
         ctx.get().setPacketHandled(true);
     }
 }
