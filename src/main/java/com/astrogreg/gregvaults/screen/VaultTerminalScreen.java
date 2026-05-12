@@ -190,13 +190,10 @@ public class VaultTerminalScreen extends AbstractContainerScreen<VaultTerminalMe
             g.fill(sbX + 1, sbY + SB_BTN, sbX + SB_W - 1, sbScreenBotY, C_SB_THUMB);
         }
 
-        int vaultSlots = menu.getVisibleSlotCount();
-        int[] filtered = menu.getFilteredIndices();
-        for (int i = 0; i < vaultSlots; i++) {
+        int vaultSlotCount = menu.getVisibleSlotCount();
+        for (int i = 0; i < vaultSlotCount; i++) {
             Slot slot = menu.slots.get(i);
-            int absolute = scrollOffset * VaultTerminalMenu.COLS + i;
-            int realIdx = (filtered != null) ? (absolute < filtered.length ? filtered[absolute] : -1) : absolute;
-            if (realIdx >= 0 && realIdx < menu.totalSlots && !slot.isActive()) {
+            if (!slot.isActive()) {
                 g.fill(leftPos + slot.x, topPos + slot.y,
                         leftPos + slot.x + 16, topPos + slot.y + 16,
                         C_INACTIVE);
