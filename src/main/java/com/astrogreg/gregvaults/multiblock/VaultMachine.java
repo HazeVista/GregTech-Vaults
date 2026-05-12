@@ -258,37 +258,6 @@ public class VaultMachine
         markDirty();
     }
 
-    @Override
-    public void onUnload() {
-        super.onUnload();
-        if (getLevel() == null || getLevel().isClientSide() || itemHandler == null) return;
-        if (!(getLevel() instanceof ServerLevel serverLevel)) return;
-
-        boolean hasItems = false;
-        for (int i = 0; i < itemHandler.getSlots(); i++) {
-            if (!itemHandler.getStackInSlot(i).isEmpty()) { hasItems = true; break; }
-        }
-        if (!hasItems) return;
-
-        net.minecraft.core.BlockPos pos = getPos();
-        for (int i = 0; i < itemHandler.getSlots(); i++) {
-            ItemStack stack = itemHandler.getStackInSlot(i);
-            if (stack.isEmpty()) continue;
-            while (!stack.isEmpty()) {
-                int take = Math.min(stack.getMaxStackSize(), stack.getCount());
-                net.minecraft.world.entity.item.ItemEntity entity =
-                        new net.minecraft.world.entity.item.ItemEntity(
-                                serverLevel,
-                                pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
-                                stack.copyWithCount(take));
-                entity.setDefaultPickUpDelay();
-                serverLevel.addFreshEntity(entity);
-                stack.shrink(take);
-            }
-            itemHandler.setStackInSlot(i, ItemStack.EMPTY);
-        }
-    }
-
     private int countSlots() {
         if (getLevel() == null) return vaultTier.baseSlots();
 
