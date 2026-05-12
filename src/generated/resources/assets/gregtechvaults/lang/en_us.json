@@ -20,7 +20,7 @@
   "tooltip.gregtechvaults.emitter": "Emitter: %s",
   "tooltip.gregtechvaults.how_to_link": "Shift + right-click on vault to link",
   "tooltip.gregtechvaults.interface_limit": "§bMax Interfaces: %d",
-  "tooltip.gregtechvaults.linked": "Li1nked",
+  "tooltip.gregtechvaults.linked": "Linked",
   "tooltip.gregtechvaults.not_linked": "Not linked",
   "tooltip.gregtechvaults.range": "Range: %s blocks",
   "tooltip.gregtechvaults.vault_core_mk1": "§7Adds %d §7item slots to the vault.",
