@@ -113,8 +113,6 @@ public class VaultMachine
                 iface.refreshHandlerFromVault();
             }
         }
-
-        subscribeServerTick(this::onServerTick);
     }
 
     @Override
@@ -297,5 +295,4 @@ public class VaultMachine
         return slots;
     }
 
-    private void onServerTick() {}
 }
