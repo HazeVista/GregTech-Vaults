@@ -23,7 +23,6 @@ public class VaultContainerMenu extends AbstractContainerMenu {
     public static final int MAX_ROWS = 6;
     public static final int SLOTS_X = 8;
     public static final int SLOTS_Y = 18;
-    private static final int WINDOW_SIZE = MAX_ROWS * COLS;
 
     public final int visibleRows;
     public final int playerY;
@@ -44,68 +43,13 @@ public class VaultContainerMenu extends AbstractContainerMenu {
     }
 
     private void applySortToStorage() {
-        if (!(vaultHandler instanceof net.minecraftforge.items.ItemStackHandler handler)) return;
-        int slots = handler.getSlots();
-
-        java.util.List<ItemStack> stacks = new java.util.ArrayList<>();
-        for (int i = 0; i < slots; i++) {
-            ItemStack s = handler.getStackInSlot(i);
-            if (!s.isEmpty()) stacks.add(s.copy());
-        }
-
-        java.util.Comparator<ItemStack> cmp = switch (sortMode) {
-            case NAME -> java.util.Comparator.comparing(
-                    s -> s.getHoverName().getString());
-            case COUNT_DESC -> java.util.Comparator.comparingInt(
-                    (ItemStack s) -> s.getCount()).reversed();
-            case COUNT_ASC -> java.util.Comparator.comparingInt(
-                    s -> s.getCount());
-        };
-        stacks.sort(cmp);
-
-        for (int i = 0; i < slots; i++) {
-            handler.setStackInSlot(i, i < stacks.size() ? stacks.get(i) : ItemStack.EMPTY);
-        }
-        remapping.setSortedIndices(null);
+        if (!(vaultHandler instanceof ItemStackHandler handler)) return;
+        VaultMenuUtils.applySortToStorage(handler, sortMode, remapping);
     }
 
     public void organize() {
-        if (!(vaultHandler instanceof net.minecraftforge.items.ItemStackHandler handler)) return;
-
-        int slots = handler.getSlots();
-
-        for (int i = 0; i < slots; i++) {
-            ItemStack stackI = handler.getStackInSlot(i);
-            if (stackI.isEmpty()) continue;
-            int limit = handler.getSlotLimit(i);
-            if (stackI.getCount() >= limit) continue;
-
-            for (int j = i + 1; j < slots; j++) {
-                ItemStack stackJ = handler.getStackInSlot(j);
-                if (stackJ.isEmpty()) continue;
-                if (!ItemStack.isSameItemSameTags(stackI, stackJ)) continue;
-
-                int canTake = Math.min(stackJ.getCount(), limit - stackI.getCount());
-                stackI.grow(canTake);
-                stackJ.shrink(canTake);
-                handler.setStackInSlot(i, stackI);
-                handler.setStackInSlot(j, stackJ.isEmpty() ? ItemStack.EMPTY : stackJ);
-                if (stackI.getCount() >= limit) break;
-            }
-        }
-
-        java.util.List<ItemStack> stacks = new java.util.ArrayList<>();
-        for (int i = 0; i < slots; i++) {
-            ItemStack s = handler.getStackInSlot(i);
-            if (!s.isEmpty()) stacks.add(s.copy());
-        }
-
-        stacks.sort(java.util.Comparator.comparing(s -> s.getHoverName().getString()));
-
-        for (int i = 0; i < slots; i++) {
-            handler.setStackInSlot(i, i < stacks.size() ? stacks.get(i) : ItemStack.EMPTY);
-        }
-        remapping.setSortedIndices(null);
+        if (!(vaultHandler instanceof ItemStackHandler handler)) return;
+        VaultMenuUtils.organize(handler, remapping);
     }
 
     public VaultContainerMenu(
