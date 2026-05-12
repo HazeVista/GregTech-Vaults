@@ -115,7 +115,6 @@ public class VaultMachineDefinition {
         return GregTechVaults.REGISTRATE.multiblock(name, holder -> new VaultMachine(holder, tier))
                 .tooltips(buildVaultTooltips(tier))
                 .rotationState(RotationState.ALL)
-                .rotationState(RotationState.ALL)
                 .appearanceBlock(casingBlock)
                 .modelProperty(RECIPE_LOGIC_STATUS, RecipeLogic.Status.IDLE)
                 .model((ctx, prov, builder) -> {
