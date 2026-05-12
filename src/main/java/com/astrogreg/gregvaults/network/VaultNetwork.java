@@ -42,5 +42,17 @@ public class VaultNetwork {
                 CPacketVaultOrganize::encode,
                 CPacketVaultOrganize::decode,
                 CPacketVaultOrganize::handle);
+        CHANNEL.registerMessage(
+                id++,
+                SPacketVaultContents.class,
+                SPacketVaultContents::encode,
+                SPacketVaultContents::decode,
+                SPacketVaultContents::handle);
+        CHANNEL.registerMessage(
+                id++,
+                SPacketVaultSlotUpdate.class,
+                SPacketVaultSlotUpdate::encode,
+                SPacketVaultSlotUpdate::decode,
+                SPacketVaultSlotUpdate::handle);
     }
 }

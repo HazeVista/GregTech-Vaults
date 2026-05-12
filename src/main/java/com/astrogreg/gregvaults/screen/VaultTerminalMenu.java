@@ -114,8 +114,35 @@ public class VaultTerminalMenu extends AbstractContainerMenu {
     }
 
     // Scroll / Search / Sort
+    private ItemStack[] clientCache = null;
+
+    public void setClientCache(ItemStack[] cache) {
+        this.clientCache = cache;
+        remapping.setClientCache(cache);
+        refreshVisibleSlots();
+    }
+
+    public void updateClientCacheSlot(int slot, ItemStack stack) {
+        if (clientCache != null && slot >= 0 && slot < clientCache.length) {
+            clientCache[slot] = stack;
+            remapping.setClientCache(clientCache);
+            refreshVisibleSlots();
+        }
+    }
+
+    public void refreshVisibleSlots() {
+        int visibleCount = getVisibleSlotCount();
+        for (int i = 0; i < visibleCount; i++) {
+            Slot slot = slots.get(i);
+            if (slot instanceof VaultSlot) {
+                slot.set(remapping.getStackInSlot(i));
+            }
+        }
+    }
+
     public void updateScroll(int scrollRow) {
         remapping.setOffset(scrollRow * COLS);
+        refreshVisibleSlots();
     }
 
     public void setSortMode(VaultSortMode mode) {

@@ -4,6 +4,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.IItemHandlerModifiable;
 import net.minecraftforge.items.SlotItemHandler;
+import org.jetbrains.annotations.NotNull;
 
 public class VaultSlot extends SlotItemHandler {
 
@@ -72,14 +73,24 @@ public class VaultSlot extends SlotItemHandler {
             return windowSize;
         }
 
-        @Override
-        public ItemStack getStackInSlot(int slot) {
-            int ri = realIndex(slot);
-            return ri < 0 ? ItemStack.EMPTY : real.getStackInSlot(ri);
+        private ItemStack[] clientCache = null;
+
+        public void setClientCache(ItemStack[] cache) {
+            this.clientCache = cache;
         }
 
         @Override
-        public ItemStack insertItem(
+        public @NotNull ItemStack getStackInSlot(int slot) {
+            int ri = realIndex(slot);
+            if (ri < 0) return ItemStack.EMPTY;
+            if (clientCache != null && ri < clientCache.length) {
+                return clientCache[ri] != null ? clientCache[ri] : ItemStack.EMPTY;
+            }
+            return real.getStackInSlot(ri);
+        }
+
+        @Override
+        public @NotNull ItemStack insertItem(
                                     int slot,
                                     ItemStack stack,
                                     boolean simulate) {
@@ -88,7 +99,7 @@ public class VaultSlot extends SlotItemHandler {
         }
 
         @Override
-        public ItemStack extractItem(int slot, int amount, boolean simulate) {
+        public @NotNull ItemStack extractItem(int slot, int amount, boolean simulate) {
             int ri = realIndex(slot);
             return ri < 0 ? ItemStack.EMPTY : real.extractItem(ri, amount, simulate);
         }

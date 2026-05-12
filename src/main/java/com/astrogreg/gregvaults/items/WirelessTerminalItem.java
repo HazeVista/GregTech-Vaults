@@ -1,5 +1,7 @@
 package com.astrogreg.gregvaults.items;
 
+import com.astrogreg.gregvaults.network.SPacketVaultContents;
+import com.astrogreg.gregvaults.network.VaultNetwork;
 import net.minecraft.ChatFormatting;
 import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
@@ -279,6 +281,14 @@ public class WirelessTerminalItem extends Item {
                 (windowId, playerInv, p) -> new VaultTerminalMenu(windowId, playerInv, vault.getItemHandler()),
                 Component.translatable(KEY_VAULT_TERMINAL_TITLE));
         NetworkHooks.openScreen(serverPlayer, provider, buf -> buf.writeInt(vault.getTotalSlots()));
+
+        ItemStack[] stacks = new ItemStack[vault.getItemHandler().getSlots()];
+        for (int i = 0; i < stacks.length; i++) {
+            stacks[i] = vault.getItemHandler().getStackInSlot(i).copy();
+        }
+        VaultNetwork.CHANNEL.send(
+                net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> serverPlayer),
+                new SPacketVaultContents(stacks));
 
         return InteractionResultHolder.consume(stack);
     }

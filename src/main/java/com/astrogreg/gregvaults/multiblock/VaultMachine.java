@@ -1,5 +1,8 @@
 package com.astrogreg.gregvaults.multiblock;
 
+import com.astrogreg.gregvaults.network.SPacketVaultContents;
+import com.astrogreg.gregvaults.network.SPacketVaultSlotUpdate;
+import com.astrogreg.gregvaults.network.VaultNetwork;
 import com.gregtechceu.gtceu.api.machine.IMachineBlockEntity;
 import com.gregtechceu.gtceu.api.machine.feature.IDropSaveMachine;
 import com.gregtechceu.gtceu.api.machine.feature.IMachineModifyDrops;
@@ -78,12 +81,25 @@ public class VaultMachine
 
     private ItemStackHandler createHandler(int size) {
         return new ItemStackHandler(size) {
-
             @Override
             protected void onContentsChanged(int slot) {
                 markDirty();
+                notifySlotChanged(slot);
             }
         };
+    }
+
+    private void notifySlotChanged(int slot) {
+        if (!(getLevel() instanceof ServerLevel serverLevel)) return;
+        ItemStack stack = itemHandler.getStackInSlot(slot).copy();
+        for (ServerPlayer sp : serverLevel.players()) {
+            if ((sp.containerMenu instanceof VaultContainerMenu menu && menu.vaultHandler == itemHandler) ||
+                    (sp.containerMenu instanceof VaultTerminalMenu tMenu && tMenu.vaultHandler == itemHandler)) {
+                VaultNetwork.CHANNEL.send(
+                        net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> sp),
+                        new SPacketVaultSlotUpdate(slot, stack));
+            }
+        }
     }
 
     public VaultTier getVaultTier() {
@@ -161,15 +177,24 @@ public class VaultMachine
             InteractionHand hand,
             BlockHitResult hit) {
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
-            if (!isFormed()) {
-                return InteractionResult.PASS;
-            }
+            if (!isFormed()) return InteractionResult.PASS;
             MenuProvider provider = new SimpleMenuProvider(
                     (windowId, playerInv, p) -> new VaultContainerMenu(windowId, playerInv, itemHandler),
                     Component.translatable("gui.gregtechvaults.vault"));
             NetworkHooks.openScreen(serverPlayer, provider, buf -> buf.writeInt(totalSlots));
+            sendFullContents(serverPlayer);
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
+    }
+
+    private void sendFullContents(ServerPlayer player) {
+        ItemStack[] stacks = new ItemStack[itemHandler.getSlots()];
+        for (int i = 0; i < stacks.length; i++) {
+            stacks[i] = itemHandler.getStackInSlot(i).copy();
+        }
+        VaultNetwork.CHANNEL.send(
+                net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player),
+                new SPacketVaultContents(stacks));
     }
 
     private void serializeItemsToTag(CompoundTag tag) {
