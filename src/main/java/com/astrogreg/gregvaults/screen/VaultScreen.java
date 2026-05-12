@@ -1,5 +1,6 @@
 package com.astrogreg.gregvaults.screen;
 
+import com.astrogreg.gregvaults.network.CPacketVaultSearch;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -67,6 +68,7 @@ public class VaultScreen extends AbstractContainerScreen<VaultContainerMenu> {
             scrollOffset = 0;
             vaultMenu().updateSearch(query);
             vaultMenu().updateScroll(0);
+            VaultNetwork.CHANNEL.sendToServer(new CPacketVaultSearch(query));
             VaultNetwork.CHANNEL.sendToServer(new CPacketVaultScroll(0));
         });
         addRenderableWidget(searchBox);
