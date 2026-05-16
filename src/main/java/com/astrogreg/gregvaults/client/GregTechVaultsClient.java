@@ -5,6 +5,7 @@ import com.gregtechceu.gtceu.client.renderer.machine.DynamicRenderManager;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
@@ -25,6 +26,9 @@ public final class GregTechVaultsClient {
 
         modEventBus.addListener(VaultOverlayRender::registerModel);
         modEventBus.addListener(GregTechVaultsClient::clientSetup);
+        modEventBus.addListener(VaultKeyBindings::register);
+
+        MinecraftForge.EVENT_BUS.register(VaultKeyBindings.TickHandler.class);
     }
 
     private static void clientSetup(final FMLClientSetupEvent event) {

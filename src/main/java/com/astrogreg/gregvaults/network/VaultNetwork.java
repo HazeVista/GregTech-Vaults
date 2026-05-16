@@ -6,6 +6,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
 
 import com.astrogreg.gregvaults.GregTechVaults;
 
+@SuppressWarnings("all")
 public class VaultNetwork {
 
     private static final String PROTOCOL = "1";
@@ -54,5 +55,17 @@ public class VaultNetwork {
                 SPacketVaultSlotUpdate::encode,
                 SPacketVaultSlotUpdate::decode,
                 SPacketVaultSlotUpdate::handle);
+        CHANNEL.registerMessage(
+                id++,
+                CPacketOpenTerminal.class,
+                CPacketOpenTerminal::encode,
+                CPacketOpenTerminal::decode,
+                CPacketOpenTerminal::handle);
+        // CHANNEL.registerMessage(
+        // id++,
+        // CPacketVaultDisplayMode.class,
+        // CPacketVaultDisplayMode::encode,
+        // CPacketVaultDisplayMode::decode,
+        // CPacketVaultDisplayMode::handle);
     }
 }

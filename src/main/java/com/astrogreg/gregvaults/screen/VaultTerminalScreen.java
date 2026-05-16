@@ -1,8 +1,10 @@
 package com.astrogreg.gregvaults.screen;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -11,24 +13,33 @@ import net.minecraft.world.inventory.Slot;
 
 import com.astrogreg.gregvaults.network.*;
 
+import java.util.UUID;
+
+@SuppressWarnings("all")
 public class VaultTerminalScreen extends AbstractContainerScreen<VaultTerminalMenu> {
 
     private static final ResourceLocation TEXTURE = new ResourceLocation("minecraft",
             "textures/gui/container/generic_54.png");
+    private static final ResourceLocation ARROW_TEXTURE = new ResourceLocation("gregtechvaults",
+            "textures/gui/overlay/crafting_table.png");
 
     private static final int TEX_W = 176;
     private static final int TEX_TOP_H = 17;
     private static final int TEX_ROW_H = 18;
     private static final int TEX_PLAYER_V = 125;
     private static final int TEX_PLAYER_H = 96;
+
     private static final int SB_X = TEX_W + 2;
     private static final int SB_W = 12;
     private static final int SB_BTN = 12;
-    private static final int C_ARROW = 0xFF555555;
     private static final int C_SB_TRACK = 0xFF8B8B8B;
     private static final int C_SB_THUMB = 0xFFCCCCCC;
     private static final int C_SB_BTN = 0xFFAAAAAA;
     private static final int C_INACTIVE = 0x99111111;
+
+    private static final int BTN_X_OFFSET = -20;
+    private static final int BTN_SIZE = 18;
+    private static final int BTN_GAP = 2;
 
     private final int visibleRows;
     private final int sbH;
@@ -38,17 +49,45 @@ public class VaultTerminalScreen extends AbstractContainerScreen<VaultTerminalMe
     private int scrollOffset = 0;
     private int sbScreenX, sbScreenTopY, sbScreenBotY;
 
+    // STACKED_MODE: private VaultDisplayMode currentDisplayMode;
+    // STACKED_MODE: private boolean sortReversed;
+    // STACKED_MODE: private VaultSortMode currentSort;
+    // STACKED_MODE: private Button displayModeBtn;
+    // STACKED_MODE: private Button sortBtn;
+    // STACKED_MODE: private java.util.List<AggregatedStack> frozenAggView = null;
+    // STACKED_MODE: private boolean shiftHeld = false;
+
+    private UUID playerUuid;
+    private Button organizeBtn;
+
     public VaultTerminalScreen(VaultTerminalMenu menu, Inventory playerInv, Component title) {
         super(menu, playerInv, title);
         this.visibleRows = menu.visibleRows;
         this.sbH = visibleRows * TEX_ROW_H;
         this.sbTrackH = sbH - 2 * SB_BTN;
-
         this.imageWidth = TEX_W + 2 + SB_W;
         this.imageHeight = menu.hotbarY + VaultTerminalMenu.SLOT_SIZE + 4;
+        this.playerUuid = Minecraft.getInstance().player != null ? Minecraft.getInstance().player.getUUID() :
+                UUID.randomUUID();
+
+        // STACKED_MODE: load display mode / sort state from VaultScreenState here
     }
 
-    private VaultSortMode currentSort = VaultSortMode.NAME;
+    private VaultTerminalMenu terminalMenu() {
+        return (VaultTerminalMenu) menu;
+    }
+
+    // STACKED_MODE: private ResourceLocation displayTexture() { ... }
+    // STACKED_MODE: private ResourceLocation sortTexture() { ... }
+    // STACKED_MODE: private String displayModeTooltip() { ... }
+    // STACKED_MODE: private String sortTooltip() { ... }
+    // STACKED_MODE: private void cycleSort(boolean forward) { ... }
+
+    private void saveState() {
+        // STACKED_MODE: VaultScreenState.save(playerUuid, currentDisplayMode, currentSort, sortReversed, ...)
+        VaultScreenState.save(playerUuid, VaultDisplayMode.SLOTS, VaultSortMode.NAME, false,
+                searchBox != null ? searchBox.getValue() : "");
+    }
 
     @Override
     protected void init() {
@@ -57,6 +96,8 @@ public class VaultTerminalScreen extends AbstractContainerScreen<VaultTerminalMe
         sbScreenX = leftPos + SB_X;
         sbScreenTopY = topPos + TEX_TOP_H;
         sbScreenBotY = sbScreenTopY + sbH - SB_BTN;
+
+        VaultScreenState.State state = VaultScreenState.get(playerUuid);
 
         searchBox = new EditBox(font,
                 leftPos + VaultTerminalMenu.SLOTS_X + 2, topPos + 5,
@@ -71,49 +112,30 @@ public class VaultTerminalScreen extends AbstractContainerScreen<VaultTerminalMe
             menu.updateScroll(0);
             VaultNetwork.CHANNEL.sendToServer(new CPacketVaultSearch(query));
             VaultNetwork.CHANNEL.sendToServer(new CPacketVaultScroll(0));
+            saveState();
         });
         addRenderableWidget(searchBox);
 
-        VaultTerminalMenu terminalMenu = menu;
-        Button[] sortBtnRef = new Button[1];
-        sortBtnRef[0] = Button.builder(
-                Component.literal(sortSymbol()),
-                btn -> {
-                    currentSort = currentSort.next();
-                    btn.setMessage(Component.literal(sortSymbol()));
-                    btn.setTooltip(net.minecraft.client.gui.components.Tooltip.create(
-                            Component.literal(currentSort.label())));
-                    terminalMenu.setSortMode(currentSort);
-                    VaultNetwork.CHANNEL.sendToServer(new CPacketVaultSort(currentSort));
-                })
-                .bounds(leftPos - 18, topPos + 3, 14, 14)
-                .tooltip(net.minecraft.client.gui.components.Tooltip.create(
-                        Component.literal(currentSort.label())))
+        if (!state.searchQuery.isEmpty()) {
+            searchBox.setValue(state.searchQuery);
+        }
+
+        int btnX = leftPos + BTN_X_OFFSET;
+
+        organizeBtn = Button.builder(Component.empty(), btn -> {
+            menu.organize();
+            VaultNetwork.CHANNEL.sendToServer(new CPacketVaultOrganize());
+        })
+                .bounds(btnX, topPos + 3, BTN_SIZE, BTN_SIZE)
+                .tooltip(Tooltip.create(Component.literal("Organize")))
                 .build();
-        addRenderableWidget(sortBtnRef[0]);
+        addRenderableWidget(organizeBtn);
 
-        addRenderableWidget(Button.builder(
-                Component.literal("⇅"),
-                btn -> {
-                    terminalMenu.organize();
-                    VaultNetwork.CHANNEL.sendToServer(new CPacketVaultOrganize());
-                })
-                .bounds(leftPos - 18, topPos + 19, 14, 14)
-                .tooltip(net.minecraft.client.gui.components.Tooltip.create(
-                        Component.literal("Organize")))
-                .build());
-    }
-
-    private String sortSymbol() {
-        return switch (currentSort) {
-            case NAME -> "Az";
-            case COUNT_DESC -> "#↓";
-            case COUNT_ASC -> "#↑";
-        };
+        // STACKED_MODE: restore displayModeBtn and sortBtn here when re-enabling
     }
 
     private int maxScroll() {
-        return Math.max(0, menu.getTotalFilteredRows() - visibleRows);
+        return Math.max(0, terminalMenu().getTotalFilteredRows() - visibleRows);
     }
 
     private void applyScroll(int newScroll) {
@@ -124,27 +146,38 @@ public class VaultTerminalScreen extends AbstractContainerScreen<VaultTerminalMe
         VaultNetwork.CHANNEL.sendToServer(new CPacketVaultScroll(scrollOffset));
     }
 
+    // STACKED_MODE: private List<AggregatedStack> deepCopyAggView(List<AggregatedStack> source) { ... }
+    // STACKED_MODE: private void syncFrozenCounts() { ... }
+    // STACKED_MODE: private static String itemKey(ItemStack stack) { ... }
+    // STACKED_MODE: private List<AggregatedStack> getRenderAggView() { ... }
+
     @Override
     public void render(GuiGraphics g, int mx, int my, float pt) {
         renderBackground(g);
         super.render(g, mx, my, pt);
+
+        int btnX = leftPos + BTN_X_OFFSET;
+
+        // Organize icon overlay on top of button
+        g.blit(new ResourceLocation("gregtechvaults", "textures/gui/overlay/sort_inventory.png"),
+                btnX, topPos + 3, 0, 0, BTN_SIZE, BTN_SIZE, BTN_SIZE, BTN_SIZE);
+
+        // STACKED_MODE: displayModeBtn icon, sortBtn icon, and aggregated count labels rendered here
+
         renderTooltip(g, mx, my);
     }
 
     @Override
     protected void renderBg(GuiGraphics g, float pt, int mx, int my) {
         int x = leftPos, y = topPos;
-        g.drawString(font, "Vault Terminal", leftPos + VaultTerminalMenu.SLOTS_X, topPos - 12, 0xFFEEEEEE, true);
+        g.drawString(font, "Vault Terminal",
+                leftPos + VaultTerminalMenu.SLOTS_X, topPos - 12, 0xFFEEEEEE, true);
 
-        // Top bar
         g.blit(TEXTURE, x, y, 0, 0, TEX_W, TEX_TOP_H);
-
-        // Vault rows
         for (int row = 0; row < visibleRows; row++) {
             g.blit(TEXTURE, x, y + TEX_TOP_H + row * TEX_ROW_H, 0, 17, TEX_W, TEX_ROW_H);
         }
 
-        // Crafting section
         int craftSecY = y + menu.craftSectionY;
         int craftSecH = 4 * TEX_ROW_H;
         g.fill(x, craftSecY, x + TEX_W, craftSecY + craftSecH, 0xFFC6C6C6);
@@ -153,6 +186,7 @@ public class VaultTerminalScreen extends AbstractContainerScreen<VaultTerminalMe
         g.fill(x + TEX_W - 1, craftSecY, x + TEX_W, craftSecY + craftSecH, 0xFF000000);
         g.fill(x + TEX_W - 3, craftSecY, x + TEX_W - 1, craftSecY + craftSecH, 0xFF4F4F4F);
 
+        // Crafting grid slots
         int craftGY = y + menu.craftGridY;
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 3; col++) {
@@ -162,24 +196,27 @@ public class VaultTerminalScreen extends AbstractContainerScreen<VaultTerminalMe
                         7, 17, VaultTerminalMenu.SLOT_SIZE, VaultTerminalMenu.SLOT_SIZE);
             }
         }
+
+        g.blit(ARROW_TEXTURE,
+                x + menu.craftGridX + 3 * VaultTerminalMenu.SLOT_SIZE + 1,
+                craftGY + VaultTerminalMenu.SLOT_SIZE + (VaultTerminalMenu.SLOT_SIZE - 15) / 2,
+                0, 0, 22, 15, 22, 15);
+
         g.blit(TEXTURE,
-                x + menu.craftOutX - 1, y + menu.craftOutY - 1,
+                x + menu.craftOutX - 1,
+                y + menu.craftOutY - 1,
                 7, 17, VaultTerminalMenu.SLOT_SIZE, VaultTerminalMenu.SLOT_SIZE);
 
-        // Player inventory
         g.blit(TEXTURE, x, y + menu.playerY - 15, 0, TEX_PLAYER_V, TEX_W, TEX_PLAYER_H);
 
         // Scrollbar
         int sbX = sbScreenX, sbY = sbScreenTopY;
         g.fill(sbX, sbY, sbX + SB_W, sbY + sbH, C_SB_TRACK);
-
         g.fill(sbX, sbY, sbX + SB_W, sbY + SB_BTN, C_SB_BTN);
-        g.drawString(font, "▲", sbX + 2, sbY + 2, 0x333333, false);
-
+        g.drawString(font, "\u25b2", sbX + 2, sbY + 2, 0x333333, false);
         g.fill(sbX, sbScreenBotY, sbX + SB_W, sbScreenBotY + SB_BTN, C_SB_BTN);
-        g.drawString(font, "▼", sbX + 2, sbScreenBotY + 2, 0x333333, false);
+        g.drawString(font, "\u25bc", sbX + 2, sbScreenBotY + 2, 0x333333, false);
 
-        // Thumb
         int maxRows = maxScroll();
         if (maxRows > 0) {
             int thumbH = Math.max(10, sbTrackH * visibleRows / (maxRows + visibleRows));
@@ -201,25 +238,21 @@ public class VaultTerminalScreen extends AbstractContainerScreen<VaultTerminalMe
         }
     }
 
-    private void drawArrow(GuiGraphics g, int ax, int ay) {
-        g.fill(ax, ay + 3, ax + 9, ay + 5, C_ARROW);
-        g.fill(ax + 6, ay + 1, ax + 9, ay + 3, C_ARROW);
-        g.fill(ax + 6, ay + 5, ax + 9, ay + 7, C_ARROW);
-        g.fill(ax + 8, ay, ax + 9, ay + 1, C_ARROW);
-        g.fill(ax + 8, ay + 7, ax + 9, ay + 8, C_ARROW);
-    }
-
     @Override
     protected void renderLabels(GuiGraphics g, int mx, int my) {
         String slotInfo = menu.totalSlots + " slots";
         g.drawString(font, slotInfo,
                 TEX_W - font.width(slotInfo) - VaultTerminalMenu.SLOTS_X, 6, 0x404040, false);
-
         g.drawString(font, "Crafting Terminal",
                 VaultTerminalMenu.SLOTS_X, menu.craftSectionY + 4, 0x404040, false);
-
         g.drawString(font, Component.translatable("container.inventory"),
                 VaultTerminalMenu.SLOTS_X, menu.playerY - 11, 0x404040, false);
+    }
+
+    @Override
+    public void onClose() {
+        saveState();
+        super.onClose();
     }
 
     @Override
@@ -261,6 +294,7 @@ public class VaultTerminalScreen extends AbstractContainerScreen<VaultTerminalMe
                 }
             }
         }
+        // STACKED_MODE: right-click sort button cycles backwards — restore here
         return super.mouseClicked(mx, my, button);
     }
 
@@ -270,9 +304,12 @@ public class VaultTerminalScreen extends AbstractContainerScreen<VaultTerminalMe
             this.onClose();
             return true;
         }
+        // STACKED_MODE: shift-freeze logic — restore here
         if (searchBox.isFocused()) return searchBox.keyPressed(keyCode, scanCode, modifiers);
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
+
+    // STACKED_MODE: keyReleased override for shift-freeze — restore here
 
     @Override
     public boolean charTyped(char c, int modifiers) {

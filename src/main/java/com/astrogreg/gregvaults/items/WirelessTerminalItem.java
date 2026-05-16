@@ -1,7 +1,5 @@
 package com.astrogreg.gregvaults.items;
 
-import com.astrogreg.gregvaults.network.SPacketVaultContents;
-import com.astrogreg.gregvaults.network.VaultNetwork;
 import net.minecraft.ChatFormatting;
 import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
@@ -27,6 +25,8 @@ import net.minecraftforge.network.NetworkHooks;
 
 import com.astrogreg.gregvaults.config.VaultConfig;
 import com.astrogreg.gregvaults.multiblock.VaultMachine;
+import com.astrogreg.gregvaults.network.SPacketVaultContents;
+import com.astrogreg.gregvaults.network.VaultNetwork;
 import com.astrogreg.gregvaults.screen.VaultTerminalMenu;
 import com.mojang.datafixers.util.Pair;
 import org.jetbrains.annotations.Nullable;
@@ -278,7 +278,12 @@ public class WirelessTerminalItem extends Item {
         }
 
         MenuProvider provider = new SimpleMenuProvider(
-                (windowId, playerInv, p) -> new VaultTerminalMenu(windowId, playerInv, vault.getItemHandler()),
+                (windowId, playerInv, p) -> {
+                    VaultTerminalMenu menu = new VaultTerminalMenu(windowId, playerInv, vault.getItemHandler());
+                    menu.initCraftingGrid(vault.getSavedCraftingGrid());
+                    menu.setOnGridClose(vault::setSavedCraftingGrid);
+                    return menu;
+                },
                 Component.translatable(KEY_VAULT_TERMINAL_TITLE));
         NetworkHooks.openScreen(serverPlayer, provider, buf -> buf.writeInt(vault.getTotalSlots()));
 

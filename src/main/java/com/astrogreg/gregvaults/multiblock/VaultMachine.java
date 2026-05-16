@@ -1,13 +1,10 @@
 package com.astrogreg.gregvaults.multiblock;
 
-import com.astrogreg.gregvaults.network.SPacketVaultContents;
-import com.astrogreg.gregvaults.network.SPacketVaultSlotUpdate;
-import com.astrogreg.gregvaults.network.VaultNetwork;
 import com.gregtechceu.gtceu.api.machine.IMachineBlockEntity;
 import com.gregtechceu.gtceu.api.machine.feature.IDropSaveMachine;
 import com.gregtechceu.gtceu.api.machine.feature.IMachineModifyDrops;
-import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
 import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiPart;
+import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -29,14 +26,17 @@ import net.minecraftforge.network.NetworkHooks;
 import com.astrogreg.gregvaults.blocks.VaultCoreBlock;
 import com.astrogreg.gregvaults.blocks.VaultCoreBlock.CoreTier;
 import com.astrogreg.gregvaults.config.VaultConfig;
+import com.astrogreg.gregvaults.network.SPacketVaultContents;
+import com.astrogreg.gregvaults.network.SPacketVaultSlotUpdate;
+import com.astrogreg.gregvaults.network.VaultNetwork;
 import com.astrogreg.gregvaults.screen.VaultContainerMenu;
 import com.astrogreg.gregvaults.screen.VaultTerminalMenu;
 
 import java.util.List;
 
 public class VaultMachine
-        extends MultiblockControllerMachine
-        implements IDropSaveMachine, IMachineModifyDrops {
+                          extends MultiblockControllerMachine
+                          implements IDropSaveMachine, IMachineModifyDrops {
 
     public enum VaultTier {
 
@@ -72,15 +72,18 @@ public class VaultMachine
     private final VaultTier vaultTier;
     private int totalSlots = 0;
     private ItemStackHandler itemHandler;
+    private ItemStack[] savedCraftingGrid = new ItemStack[9];
 
     public VaultMachine(IMachineBlockEntity holder, VaultTier vaultTier) {
         super(holder);
         this.vaultTier = vaultTier;
         this.itemHandler = createHandler(0);
+        java.util.Arrays.fill(this.savedCraftingGrid, ItemStack.EMPTY);
     }
 
     private ItemStackHandler createHandler(int size) {
         return new ItemStackHandler(size) {
+
             @Override
             protected void onContentsChanged(int slot) {
                 markDirty();
@@ -114,6 +117,15 @@ public class VaultMachine
         return itemHandler;
     }
 
+    public ItemStack[] getSavedCraftingGrid() {
+        return savedCraftingGrid;
+    }
+
+    public void setSavedCraftingGrid(ItemStack[] grid) {
+        this.savedCraftingGrid = grid;
+        markDirty();
+    }
+
     @Override
     public void onStructureFormed() {
         super.onStructureFormed();
@@ -141,11 +153,10 @@ public class VaultMachine
     private void kickPlayers() {
         if (getLevel() instanceof ServerLevel serverLevel) {
             for (ServerPlayer sp : serverLevel.players()) {
-                boolean shouldKick =
-                        (sp.containerMenu instanceof VaultContainerMenu menu &&
-                                menu.vaultHandler == this.itemHandler) ||
-                                (sp.containerMenu instanceof VaultTerminalMenu tMenu &&
-                                        tMenu.vaultHandler == this.itemHandler);
+                boolean shouldKick = (sp.containerMenu instanceof VaultContainerMenu menu &&
+                        menu.vaultHandler == this.itemHandler) ||
+                        (sp.containerMenu instanceof VaultTerminalMenu tMenu &&
+                                tMenu.vaultHandler == this.itemHandler);
                 if (shouldKick) {
                     sp.closeContainer();
                 }
@@ -170,16 +181,24 @@ public class VaultMachine
 
     @Override
     public InteractionResult onUse(
-            BlockState state,
-            net.minecraft.world.level.Level level,
-            BlockPos pos,
-            Player player,
-            InteractionHand hand,
-            BlockHitResult hit) {
+                                   BlockState state,
+                                   net.minecraft.world.level.Level level,
+                                   BlockPos pos,
+                                   Player player,
+                                   InteractionHand hand,
+                                   BlockHitResult hit) {
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
             if (!isFormed()) return InteractionResult.PASS;
             MenuProvider provider = new SimpleMenuProvider(
-                    (windowId, playerInv, p) -> new VaultContainerMenu(windowId, playerInv, itemHandler),
+                    (windowId, playerInv, p) -> {
+                        VaultContainerMenu menu = new VaultContainerMenu(windowId, playerInv, itemHandler);
+                        menu.initCraftingGrid(savedCraftingGrid);
+                        menu.setOnGridClose(grid -> {
+                            savedCraftingGrid = grid;
+                            markDirty();
+                        });
+                        return menu;
+                    },
                     Component.translatable("gui.gregtechvaults.vault"));
             NetworkHooks.openScreen(serverPlayer, provider, buf -> buf.writeInt(totalSlots));
             sendFullContents(serverPlayer);
@@ -210,6 +229,17 @@ public class VaultMachine
         tag.put("VaultSlots", list);
         tag.putInt("TotalSlots", totalSlots);
         tag.remove("VaultItems");
+
+        net.minecraft.nbt.ListTag craftList = new net.minecraft.nbt.ListTag();
+        for (int i = 0; i < savedCraftingGrid.length; i++) {
+            ItemStack s = savedCraftingGrid[i];
+            if (s == null || s.isEmpty()) continue;
+            net.minecraft.nbt.CompoundTag entry = new net.minecraft.nbt.CompoundTag();
+            entry.putInt("Slot", i);
+            s.save(entry);
+            craftList.add(entry);
+        }
+        tag.put("CraftingGrid", craftList);
     }
 
     private void deserializeItemsFromTag(CompoundTag tag) {
@@ -224,6 +254,18 @@ public class VaultMachine
             }
         } else if (tag.contains("VaultItems", net.minecraft.nbt.Tag.TAG_COMPOUND)) {
             itemHandler.deserializeNBT(tag.getCompound("VaultItems"));
+        }
+
+        java.util.Arrays.fill(savedCraftingGrid, ItemStack.EMPTY);
+        if (tag.contains("CraftingGrid", net.minecraft.nbt.Tag.TAG_LIST)) {
+            net.minecraft.nbt.ListTag craftList = tag.getList("CraftingGrid", net.minecraft.nbt.Tag.TAG_COMPOUND);
+            for (int i = 0; i < craftList.size(); i++) {
+                net.minecraft.nbt.CompoundTag entry = craftList.getCompound(i);
+                int slot = entry.getInt("Slot");
+                if (slot >= 0 && slot < savedCraftingGrid.length) {
+                    savedCraftingGrid[slot] = ItemStack.of(entry);
+                }
+            }
         }
     }
 
@@ -319,5 +361,4 @@ public class VaultMachine
         }
         return slots;
     }
-
 }

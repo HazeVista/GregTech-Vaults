@@ -26,8 +26,8 @@ public class CPacketVaultScroll {
     }
 
     public static void handle(
-            CPacketVaultScroll packet,
-            Supplier<NetworkEvent.Context> ctx) {
+                              CPacketVaultScroll packet,
+                              Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             ServerPlayer player = ctx.get().getSender();
             if (player == null) return;

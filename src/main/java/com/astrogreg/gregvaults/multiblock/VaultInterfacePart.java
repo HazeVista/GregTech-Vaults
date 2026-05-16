@@ -230,8 +230,8 @@ public class VaultInterfacePart extends MultiblockPartMachine {
         } else {
             cycleItemMode(gridSide);
             player.displayClientMessage(Component.literal(
-                            itemIoMode == ItemIoMode.DISABLED ? "Vault Interface: disabled" :
-                                    "Vault Interface: " + itemIoMode.displayName() + " on " + gridSide.getName()),
+                    itemIoMode == ItemIoMode.DISABLED ? "Vault Interface: disabled" :
+                            "Vault Interface: " + itemIoMode.displayName() + " on " + gridSide.getName()),
                     true);
         }
 
