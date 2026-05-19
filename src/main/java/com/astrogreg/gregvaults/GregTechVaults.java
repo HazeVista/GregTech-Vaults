@@ -23,10 +23,7 @@ import com.astrogreg.gregvaults.datagen.VaultDatagen;
 import com.astrogreg.gregvaults.multiblock.VaultMachineDefinition;
 import com.astrogreg.gregvaults.network.VaultNetwork;
 import com.astrogreg.gregvaults.recipe.VaultRecipes;
-import com.astrogreg.gregvaults.registry.VaultBlocks;
-import com.astrogreg.gregvaults.registry.VaultItems;
-import com.astrogreg.gregvaults.registry.VaultMachines;
-import com.astrogreg.gregvaults.registry.VaultMenuTypes;
+import com.astrogreg.gregvaults.registry.VaultRegistry;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -53,7 +50,7 @@ public class GregTechVaults {
         modEventBus.addListener(this::addMaterials);
         modEventBus.addListener(this::modifyMaterials);
 
-        VaultMenuTypes.MENU_TYPES.register(modEventBus);
+        VaultRegistry.registerEventBus(modEventBus);
         VaultRecipes.SERIALIZERS.register(modEventBus);
 
         MinecraftForge.EVENT_BUS.register(this);
@@ -62,13 +59,11 @@ public class GregTechVaults {
 
         VaultConfig.init();
         VaultDatagen.init();
-        VaultBlocks.init();
-        VaultItems.init();
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(VaultNetwork::init);
-        event.enqueueWork(VaultItems::registerLinkables);
+        event.enqueueWork(VaultRegistry::registerLinkables);
     }
 
     public static ResourceLocation id(String path) {
@@ -86,7 +81,7 @@ public class GregTechVaults {
     private void registerRecipeTypes(GTCEuAPI.RegisterEvent<ResourceLocation, GTRecipeType> event) {}
 
     private void registerMachines(GTCEuAPI.RegisterEvent<ResourceLocation, MachineDefinition> event) {
-        VaultMachines.init();
+        VaultRegistry.initMachines();
         VaultMachineDefinition.init();
     }
 

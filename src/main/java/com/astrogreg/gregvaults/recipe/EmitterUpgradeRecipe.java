@@ -14,7 +14,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 
 import com.astrogreg.gregvaults.items.WirelessTerminalItem;
 import com.astrogreg.gregvaults.items.WirelessTerminalItem.EmitterTier;
-import com.astrogreg.gregvaults.registry.VaultItems;
+import com.astrogreg.gregvaults.registry.VaultRegistry;
 import com.google.gson.JsonObject;
 import org.jetbrains.annotations.Nullable;
 
@@ -72,7 +72,7 @@ public class EmitterUpgradeRecipe extends CustomRecipe {
 
     @Override
     public ItemStack getResultItem(RegistryAccess registryAccess) {
-        ItemStack result = new ItemStack(VaultItems.WIRELESS_VAULT_TERMINAL.get());
+        ItemStack result = new ItemStack(VaultRegistry.WIRELESS_VAULT_TERMINAL.get());
         WirelessTerminalItem.setEmitterTier(result, tier);
         return result;
     }

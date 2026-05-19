@@ -25,8 +25,6 @@ import net.minecraftforge.network.NetworkHooks;
 
 import com.astrogreg.gregvaults.config.VaultConfig;
 import com.astrogreg.gregvaults.multiblock.VaultMachine;
-import com.astrogreg.gregvaults.network.SPacketVaultContents;
-import com.astrogreg.gregvaults.network.VaultNetwork;
 import com.astrogreg.gregvaults.screen.VaultTerminalMenu;
 import com.mojang.datafixers.util.Pair;
 import org.jetbrains.annotations.Nullable;
@@ -277,23 +275,20 @@ public class WirelessTerminalItem extends Item {
             return InteractionResultHolder.fail(stack);
         }
 
+        final int[] windowIdHolder = { -1 };
         MenuProvider provider = new SimpleMenuProvider(
                 (windowId, playerInv, p) -> {
-                    VaultTerminalMenu menu = new VaultTerminalMenu(windowId, playerInv, vault.getItemHandler());
+                    windowIdHolder[0] = windowId;
+                    VaultTerminalMenu menu = new VaultTerminalMenu(windowId, playerInv, vault.getItemHandler(), vault);
                     menu.initCraftingGrid(vault.getSavedCraftingGrid());
                     menu.setOnGridClose(vault::setSavedCraftingGrid);
                     return menu;
                 },
                 Component.translatable(KEY_VAULT_TERMINAL_TITLE));
         NetworkHooks.openScreen(serverPlayer, provider, buf -> buf.writeInt(vault.getTotalSlots()));
-
-        ItemStack[] stacks = new ItemStack[vault.getItemHandler().getSlots()];
-        for (int i = 0; i < stacks.length; i++) {
-            stacks[i] = vault.getItemHandler().getStackInSlot(i).copy();
+        if (windowIdHolder[0] >= 0) {
+            vault.sendFullContents(serverPlayer, windowIdHolder[0]);
         }
-        VaultNetwork.CHANNEL.send(
-                net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> serverPlayer),
-                new SPacketVaultContents(stacks));
 
         return InteractionResultHolder.consume(stack);
     }

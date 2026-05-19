@@ -1,9 +1,17 @@
 package com.astrogreg.gregvaults.screen;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import net.minecraft.client.Minecraft;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+@OnlyIn(Dist.CLIENT)
 public class VaultScreenState {
 
     public static class State {
@@ -14,18 +22,47 @@ public class VaultScreenState {
         public String searchQuery = "";
     }
 
-    private static final Map<UUID, State> STATES = new HashMap<>();
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final String FILE_NAME = "gregtechvaults-client.json";
 
-    public static State get(UUID playerUuid) {
-        return STATES.computeIfAbsent(playerUuid, k -> new State());
+    private static State cached = null;
+
+    public static State get() {
+        if (cached == null) load();
+        return cached;
     }
 
-    public static void save(UUID playerUuid, VaultDisplayMode displayMode,
-                            VaultSortMode sortMode, boolean sortReversed, String searchQuery) {
-        State state = STATES.computeIfAbsent(playerUuid, k -> new State());
+    public static void save(VaultDisplayMode displayMode, VaultSortMode sortMode,
+                            boolean sortReversed, String searchQuery) {
+        State state = get();
         state.displayMode = displayMode;
         state.sortMode = sortMode;
         state.sortReversed = sortReversed;
-        state.searchQuery = searchQuery;
+        state.searchQuery = searchQuery != null ? searchQuery : "";
+        persist();
+    }
+
+    private static void load() {
+        cached = new State();
+        Path file = configPath();
+        if (!Files.exists(file)) return;
+        try {
+            String json = Files.readString(file);
+            State loaded = GSON.fromJson(json, State.class);
+            if (loaded != null) cached = loaded;
+        } catch (IOException ignored) {}
+    }
+
+    private static void persist() {
+        try {
+            Path file = configPath();
+            Files.createDirectories(file.getParent());
+            Files.writeString(file, GSON.toJson(cached));
+        } catch (IOException ignored) {}
+    }
+
+    private static Path configPath() {
+        return Minecraft.getInstance().gameDirectory.toPath()
+                .resolve("config").resolve(FILE_NAME);
     }
 }

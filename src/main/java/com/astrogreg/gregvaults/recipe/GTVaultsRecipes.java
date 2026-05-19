@@ -13,9 +13,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 
 import com.astrogreg.gregvaults.GregTechVaults;
 import com.astrogreg.gregvaults.items.WirelessTerminalItem.EmitterTier;
-import com.astrogreg.gregvaults.registry.VaultBlocks;
-import com.astrogreg.gregvaults.registry.VaultItems;
-import com.astrogreg.gregvaults.registry.VaultMachines;
+import com.astrogreg.gregvaults.registry.VaultRegistry;
 import com.google.gson.JsonObject;
 
 import java.util.function.Consumer;
@@ -44,24 +42,24 @@ public class GTVaultsRecipes {
                 GTMachines.TITANIUM_CRATE.asStack(), 'E', new MaterialEntry(plateDouble, StainlessSteel));
 
         VanillaRecipeHelper.addShapedRecipe(provider, true, GregTechVaults.id("mk1_core"),
-                VaultBlocks.VAULT_CORE_MK1.asStack(), "AhA", "BCB", "AwA", 'A', new MaterialEntry(plate, Bronze),
+                VaultRegistry.VAULT_CORE_MK1.asStack(), "AhA", "BCB", "AwA", 'A', new MaterialEntry(plate, Bronze),
                 'B', new MaterialEntry(rodLong, Bronze), 'C', GTMachines.BRONZE_CRATE.asStack());
 
         VanillaRecipeHelper.addShapedRecipe(provider, true, GregTechVaults.id("mk2_core"),
-                VaultBlocks.VAULT_CORE_MK2.asStack(), "AhA", "BCB", "AwA", 'A', new MaterialEntry(plate, Steel),
+                VaultRegistry.VAULT_CORE_MK2.asStack(), "AhA", "BCB", "AwA", 'A', new MaterialEntry(plate, Steel),
                 'B', new MaterialEntry(rodLong, Steel), 'C', GTMachines.STEEL_CRATE.asStack());
 
         VanillaRecipeHelper.addShapedRecipe(provider, true, GregTechVaults.id("mk3_core"),
-                VaultBlocks.VAULT_CORE_MK3.asStack(), "AhA", "BCB", "AwA", 'A', new MaterialEntry(plate, Titanium),
+                VaultRegistry.VAULT_CORE_MK3.asStack(), "AhA", "BCB", "AwA", 'A', new MaterialEntry(plate, Titanium),
                 'B', new MaterialEntry(rodLong, Titanium), 'C', GTMachines.TITANIUM_CRATE.asStack());
 
         VanillaRecipeHelper.addShapedRecipe(provider, true, GregTechVaults.id("wireless_vault_terminal"),
-                VaultItems.WIRELESS_VAULT_TERMINAL.asStack(), "AAA", "CBD", "EdE", 'A',
+                VaultRegistry.WIRELESS_VAULT_TERMINAL.asStack(), "AAA", "CBD", "EdE", 'A',
                 new MaterialEntry(plate, Steel), 'B', new MaterialEntry(plate, Glass), 'C', GTItems.EMITTER_LV,
                 'D', GTItems.SENSOR_LV, 'E', new MaterialEntry(screw, Steel));
 
         VanillaRecipeHelper.addShapedRecipe(provider, true, GregTechVaults.id("vault_interface"),
-                VaultMachines.VAULT_INTERFACE.asStack(), "w", "B", "A", 'A', GTBlocks.BRONZE_HULL,
+                VaultRegistry.VAULT_INTERFACE.asStack(), "w", "B", "A", 'A', GTBlocks.BRONZE_HULL,
                 'B', new MaterialEntry(pipeNormalFluid, Bronze));
 
         addEmitterUpgrade(provider, EmitterTier.LV, GTItems.EMITTER_LV.get());

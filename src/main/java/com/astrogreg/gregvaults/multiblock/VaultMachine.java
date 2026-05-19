@@ -27,10 +27,9 @@ import com.astrogreg.gregvaults.blocks.VaultCoreBlock;
 import com.astrogreg.gregvaults.blocks.VaultCoreBlock.CoreTier;
 import com.astrogreg.gregvaults.config.VaultConfig;
 import com.astrogreg.gregvaults.network.SPacketVaultContents;
-import com.astrogreg.gregvaults.network.SPacketVaultSlotUpdate;
+import com.astrogreg.gregvaults.network.SPacketVaultDelta;
 import com.astrogreg.gregvaults.network.VaultNetwork;
 import com.astrogreg.gregvaults.screen.VaultContainerMenu;
-import com.astrogreg.gregvaults.screen.VaultTerminalMenu;
 
 import java.util.List;
 
@@ -74,6 +73,35 @@ public class VaultMachine
     private ItemStackHandler itemHandler;
     private ItemStack[] savedCraftingGrid = new ItemStack[9];
 
+    public enum BatchSyncMode {
+        AUTO,
+        DELTA_ONLY
+    }
+
+    private int batchDepth = 0;
+    private BatchSyncMode batchSyncMode = BatchSyncMode.AUTO;
+    private final java.util.Set<Integer> dirtySlots = new java.util.HashSet<>();
+
+    private final java.util.Set<ServerPlayer> activeViewers = new java.util.HashSet<>();
+    private final java.util.Map<java.util.UUID, ItemStack[]> lastSentByViewer = new java.util.HashMap<>();
+
+    private ItemStack[] getLastSentItems(ServerPlayer viewer) {
+        return lastSentByViewer.computeIfAbsent(viewer.getUUID(), k -> {
+            ItemStack[] arr = new ItemStack[itemHandler.getSlots()];
+            java.util.Arrays.fill(arr, ItemStack.EMPTY);
+            return arr;
+        });
+    }
+
+    public void addViewer(ServerPlayer player) {
+        activeViewers.add(player);
+    }
+
+    public void removeViewer(ServerPlayer player) {
+        activeViewers.remove(player);
+        lastSentByViewer.remove(player.getUUID());
+    }
+
     public VaultMachine(IMachineBlockEntity holder, VaultTier vaultTier) {
         super(holder);
         this.vaultTier = vaultTier;
@@ -87,21 +115,114 @@ public class VaultMachine
             @Override
             protected void onContentsChanged(int slot) {
                 markDirty();
-                notifySlotChanged(slot);
+                if (batchDepth > 0) {
+                    dirtySlots.add(slot);
+                } else {
+                    notifySlotChanged(slot);
+                }
             }
         };
     }
 
+    public void beginBatch() {
+        beginBatch(BatchSyncMode.AUTO);
+    }
+
+    public void beginBatch(BatchSyncMode mode) {
+        BatchSyncMode requestedMode = mode == null ? BatchSyncMode.AUTO : mode;
+        if (batchDepth == 0) {
+            dirtySlots.clear();
+            batchSyncMode = requestedMode;
+        } else if (requestedMode == BatchSyncMode.DELTA_ONLY) {
+
+            batchSyncMode = BatchSyncMode.DELTA_ONLY;
+        }
+        batchDepth++;
+    }
+
+    public void endBatch() {
+        if (batchDepth <= 0) {
+            batchDepth = 0;
+            batchSyncMode = BatchSyncMode.AUTO;
+            dirtySlots.clear();
+            return;
+        }
+
+        batchDepth--;
+        if (batchDepth > 0) return;
+
+        if (dirtySlots.isEmpty()) {
+            batchSyncMode = BatchSyncMode.AUTO;
+            return;
+        }
+        if (activeViewers.isEmpty()) {
+            dirtySlots.clear();
+            batchSyncMode = BatchSyncMode.AUTO;
+            return;
+        }
+
+        boolean allowFullSnapshot = batchSyncMode != BatchSyncMode.DELTA_ONLY;
+        if (allowFullSnapshot && dirtySlots.size() > 256) {
+            sendFullSnapshot(new java.util.ArrayList<>(activeViewers));
+        } else {
+            sendDirtySlotDeltas();
+        }
+        dirtySlots.clear();
+        batchSyncMode = BatchSyncMode.AUTO;
+    }
+
+    private void sendDirtySlotDeltas() {
+        for (ServerPlayer sp : activeViewers) {
+            SPacketVaultDelta.Builder builder = new SPacketVaultDelta.Builder(sp.containerMenu.containerId);
+            for (int slot : dirtySlots) buildDeltaEntry(builder, slot, sp);
+            if (!builder.isEmpty())
+                VaultNetwork.CHANNEL.send(net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> sp),
+                        builder.build());
+        }
+    }
+
     private void notifySlotChanged(int slot) {
-        if (!(getLevel() instanceof ServerLevel serverLevel)) return;
-        ItemStack stack = itemHandler.getStackInSlot(slot).copy();
-        for (ServerPlayer sp : serverLevel.players()) {
-            if ((sp.containerMenu instanceof VaultContainerMenu menu && menu.vaultHandler == itemHandler) ||
-                    (sp.containerMenu instanceof VaultTerminalMenu tMenu && tMenu.vaultHandler == itemHandler)) {
-                VaultNetwork.CHANNEL.send(
-                        net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> sp),
-                        new SPacketVaultSlotUpdate(slot, stack));
+        if (activeViewers.isEmpty()) return;
+        for (ServerPlayer sp : activeViewers) {
+            SPacketVaultDelta.Builder builder = new SPacketVaultDelta.Builder(sp.containerMenu.containerId);
+            buildDeltaEntry(builder, slot, sp);
+            if (!builder.isEmpty())
+                VaultNetwork.CHANNEL.send(net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> sp),
+                        builder.build());
+        }
+    }
+
+    private void buildDeltaEntry(SPacketVaultDelta.Builder builder, int slot, ServerPlayer viewer) {
+        ItemStack current = itemHandler.getStackInSlot(slot);
+        ItemStack[] sent = getLastSentItems(viewer);
+        ItemStack last = (slot < sent.length) ? sent[slot] : ItemStack.EMPTY;
+        if (last == null) last = ItemStack.EMPTY;
+
+        if (current.isEmpty()) {
+            if (!last.isEmpty()) {
+                builder.addRemoved(slot);
+                sent[slot] = ItemStack.EMPTY;
             }
+        } else if (!last.isEmpty() && ItemStack.isSameItemSameTags(current, last)) {
+            if (current.getCount() != last.getCount()) {
+                builder.addCountOnly(slot, current.getCount());
+                sent[slot] = current.copy();
+            }
+        } else {
+            builder.addFull(slot, current.copy());
+            sent[slot] = current.copy();
+        }
+    }
+
+    private void sendFullSnapshot(java.util.List<ServerPlayer> watching) {
+        ItemStack[] stacks = new ItemStack[itemHandler.getSlots()];
+        for (int i = 0; i < stacks.length; i++) stacks[i] = itemHandler.getStackInSlot(i).copy();
+        for (ServerPlayer sp : watching) {
+            VaultNetwork.CHANNEL.send(
+                    net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> sp),
+                    new SPacketVaultContents(sp.containerMenu.containerId, stacks));
+            ItemStack[] sent = getLastSentItems(sp);
+            for (int i = 0; i < stacks.length && i < sent.length; i++) sent[i] = stacks[i].copy();
         }
     }
 
@@ -151,17 +272,11 @@ public class VaultMachine
     }
 
     private void kickPlayers() {
-        if (getLevel() instanceof ServerLevel serverLevel) {
-            for (ServerPlayer sp : serverLevel.players()) {
-                boolean shouldKick = (sp.containerMenu instanceof VaultContainerMenu menu &&
-                        menu.vaultHandler == this.itemHandler) ||
-                        (sp.containerMenu instanceof VaultTerminalMenu tMenu &&
-                                tMenu.vaultHandler == this.itemHandler);
-                if (shouldKick) {
-                    sp.closeContainer();
-                }
-            }
+        for (ServerPlayer sp : new java.util.ArrayList<>(activeViewers)) {
+            sp.closeContainer();
         }
+        activeViewers.clear();
+        lastSentByViewer.clear();
     }
 
     private void kickPlayersAndResize(int newSize) {
@@ -170,12 +285,27 @@ public class VaultMachine
     }
 
     private void resizeHandler(int newSize) {
+        if (newSize < itemHandler.getSlots() && getLevel() instanceof ServerLevel serverLevel) {
+            BlockPos pos = getPos();
+            for (int i = newSize; i < itemHandler.getSlots(); i++) {
+                ItemStack overflow = itemHandler.getStackInSlot(i);
+                if (overflow.isEmpty()) continue;
+                while (!overflow.isEmpty()) {
+                    int take = Math.min(overflow.getMaxStackSize(), overflow.getCount());
+                    net.minecraft.world.level.block.Block.popResource(serverLevel, pos, overflow.copyWithCount(take));
+                    overflow.shrink(take);
+                }
+            }
+        }
+
         ItemStackHandler newHandler = createHandler(newSize);
         int copyCount = Math.min(itemHandler.getSlots(), newSize);
         for (int i = 0; i < copyCount; i++) {
             newHandler.setStackInSlot(i, itemHandler.getStackInSlot(i));
         }
         itemHandler = newHandler;
+        activeViewers.clear();
+        lastSentByViewer.clear();
         markDirty();
     }
 
@@ -189,9 +319,12 @@ public class VaultMachine
                                    BlockHitResult hit) {
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
             if (!isFormed()) return InteractionResult.PASS;
+            final int[] windowIdHolder = { -1 };
             MenuProvider provider = new SimpleMenuProvider(
                     (windowId, playerInv, p) -> {
-                        VaultContainerMenu menu = new VaultContainerMenu(windowId, playerInv, itemHandler);
+                        windowIdHolder[0] = windowId;
+                        VaultContainerMenu menu = new VaultContainerMenu(windowId, playerInv, itemHandler,
+                                VaultMachine.this);
                         menu.initCraftingGrid(savedCraftingGrid);
                         menu.setOnGridClose(grid -> {
                             savedCraftingGrid = grid;
@@ -201,19 +334,23 @@ public class VaultMachine
                     },
                     Component.translatable("gui.gregtechvaults.vault"));
             NetworkHooks.openScreen(serverPlayer, provider, buf -> buf.writeInt(totalSlots));
-            sendFullContents(serverPlayer);
+            if (windowIdHolder[0] >= 0) {
+                sendFullContents(serverPlayer, windowIdHolder[0]);
+            }
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
     }
 
-    private void sendFullContents(ServerPlayer player) {
+    public void sendFullContents(ServerPlayer player, int containerId) {
         ItemStack[] stacks = new ItemStack[itemHandler.getSlots()];
-        for (int i = 0; i < stacks.length; i++) {
-            stacks[i] = itemHandler.getStackInSlot(i).copy();
-        }
+        for (int i = 0; i < stacks.length; i++) stacks[i] = itemHandler.getStackInSlot(i).copy();
         VaultNetwork.CHANNEL.send(
                 net.minecraftforge.network.PacketDistributor.PLAYER.with(() -> player),
-                new SPacketVaultContents(stacks));
+                new SPacketVaultContents(containerId, stacks));
+        ItemStack[] sent = new ItemStack[stacks.length];
+        for (int i = 0; i < stacks.length; i++) sent[i] = stacks[i].copy();
+        lastSentByViewer.put(player.getUUID(), sent);
+        activeViewers.add(player);
     }
 
     private void serializeItemsToTag(CompoundTag tag) {

@@ -1,6 +1,6 @@
 package com.astrogreg.gregvaults.emi;
 
-import com.astrogreg.gregvaults.registry.VaultMenuTypes;
+import com.astrogreg.gregvaults.registry.VaultRegistry;
 import dev.emi.emi.api.EmiEntrypoint;
 import dev.emi.emi.api.EmiPlugin;
 import dev.emi.emi.api.EmiRegistry;
@@ -10,7 +10,7 @@ public class VaultEmiPlugin implements EmiPlugin {
 
     @Override
     public void register(EmiRegistry registry) {
-        registry.addRecipeHandler(VaultMenuTypes.VAULT_MENU.get(), new VaultRecipeHandler<>());
-        registry.addRecipeHandler(VaultMenuTypes.VAULT_TERMINAL_MENU.get(), new VaultRecipeHandler<>());
+        registry.addRecipeHandler(VaultRegistry.VAULT_MENU.get(), new VaultRecipeHandler<>());
+        registry.addRecipeHandler(VaultRegistry.VAULT_TERMINAL_MENU.get(), new VaultRecipeHandler<>());
     }
 }

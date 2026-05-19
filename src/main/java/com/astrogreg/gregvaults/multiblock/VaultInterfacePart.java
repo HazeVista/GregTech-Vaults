@@ -143,18 +143,20 @@ public class VaultInterfacePart extends MultiblockPartMachine {
 
         Level level = getLevel();
         VaultMachine vault = getVault();
-
         if (level == null || vault == null) return;
 
         GTTransferUtils.getAdjacentItemHandler(level, getPos(), itemFacing).ifPresent(adjacent -> {
-            if (canInputItems()) {
-                GTTransferUtils.transferItemsFiltered(adjacent, vault.getItemHandler(), stack -> true);
-            } else if (canOutputItems()) {
-                GTTransferUtils.transferItemsFiltered(vault.getItemHandler(), adjacent, stack -> true);
+            vault.beginBatch();
+            try {
+                if (canInputItems()) {
+                    GTTransferUtils.transferItemsFiltered(adjacent, vault.getItemHandler(), stack -> true);
+                } else if (canOutputItems()) {
+                    GTTransferUtils.transferItemsFiltered(vault.getItemHandler(), adjacent, stack -> true);
+                }
+            } finally {
+                vault.endBatch();
             }
         });
-
-        updateAutoTransferSubscription();
     }
 
     public boolean canInputItems() {

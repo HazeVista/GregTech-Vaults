@@ -20,8 +20,7 @@ import net.minecraftforge.fml.DistExecutor;
 import com.astrogreg.gregvaults.GregTechVaults;
 import com.astrogreg.gregvaults.config.VaultConfig;
 import com.astrogreg.gregvaults.multiblock.VaultMachine.VaultTier;
-import com.astrogreg.gregvaults.registry.VaultBlocks;
-import com.astrogreg.gregvaults.registry.VaultMachines;
+import com.astrogreg.gregvaults.registry.VaultRegistry;
 
 import static com.gregtechceu.gtceu.api.machine.property.GTMachineModelProperties.RECIPE_LOGIC_STATUS;
 import static com.gregtechceu.gtceu.api.pattern.util.RelativeDirection.BACK;
@@ -48,16 +47,16 @@ public class VaultMachineDefinition {
     private static Block[] getAllowedCores(VaultTier tier) {
         return switch (tier) {
             case BRONZE -> new Block[] {
-                    VaultBlocks.VAULT_CORE_MK1.get()
+                    VaultRegistry.VAULT_CORE_MK1.get()
             };
             case STEEL -> new Block[] {
-                    VaultBlocks.VAULT_CORE_MK1.get(),
-                    VaultBlocks.VAULT_CORE_MK2.get()
+                    VaultRegistry.VAULT_CORE_MK1.get(),
+                    VaultRegistry.VAULT_CORE_MK2.get()
             };
             case TITANIUM -> new Block[] {
-                    VaultBlocks.VAULT_CORE_MK1.get(),
-                    VaultBlocks.VAULT_CORE_MK2.get(),
-                    VaultBlocks.VAULT_CORE_MK3.get()
+                    VaultRegistry.VAULT_CORE_MK1.get(),
+                    VaultRegistry.VAULT_CORE_MK2.get(),
+                    VaultRegistry.VAULT_CORE_MK3.get()
             };
         };
     }
@@ -150,7 +149,7 @@ public class VaultMachineDefinition {
                         .aisle("WWWWW", "WWWWW", "WWWWW", "WWWWW", "WWWWW")
                         .where('C', Predicates.controller(Predicates.blocks(definition.getBlock())))
                         .where('W', Predicates.blocks(casingBlock.get()).or(
-                                Predicates.abilities(VaultMachines.VAULT_INTERFACE_ABILITY)
+                                Predicates.abilities(VaultRegistry.VAULT_INTERFACE_ABILITY)
                                         .setMaxGlobalLimited(switch (tier) {
                                             case BRONZE -> VaultConfig.INSTANCE.vaultValues.bronzeVault.bronzeInterfaceLimit;
                                             case STEEL -> VaultConfig.INSTANCE.vaultValues.steelVault.steelInterfaceLimit;

@@ -8,13 +8,19 @@ public class AggregatedStack {
 
     public final ItemStack displayStack;
     public final List<Integer> backingSlots;
+    private long totalCount;
 
     public AggregatedStack(ItemStack displayStack, List<Integer> backingSlots) {
         this.displayStack = displayStack;
         this.backingSlots = backingSlots;
+        this.totalCount = displayStack.getCount();
     }
 
-    public int totalCount() {
-        return displayStack.getCount();
+    public void addCount(int count) {
+        this.totalCount += count;
+    }
+
+    public long totalCount() {
+        return totalCount;
     }
 }

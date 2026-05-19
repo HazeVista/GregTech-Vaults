@@ -9,7 +9,7 @@ import com.astrogreg.gregvaults.GregTechVaults;
 @SuppressWarnings("all")
 public class VaultNetwork {
 
-    private static final String PROTOCOL = "1";
+    private static final String PROTOCOL = "2";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(GregTechVaults.MOD_ID, "main"),
             () -> PROTOCOL,
@@ -19,53 +19,18 @@ public class VaultNetwork {
     private static int id = 0;
 
     public static void init() {
-        CHANNEL.registerMessage(
-                id++,
-                CPacketVaultScroll.class,
-                CPacketVaultScroll::encode,
-                CPacketVaultScroll::decode,
-                CPacketVaultScroll::handle);
-        CHANNEL.registerMessage(
-                id++,
-                CPacketVaultSearch.class,
-                CPacketVaultSearch::encode,
-                CPacketVaultSearch::decode,
-                CPacketVaultSearch::handle);
-        CHANNEL.registerMessage(
-                id++,
-                CPacketVaultSort.class,
-                CPacketVaultSort::encode,
-                CPacketVaultSort::decode,
-                CPacketVaultSort::handle);
-        CHANNEL.registerMessage(
-                id++,
-                CPacketVaultOrganize.class,
-                CPacketVaultOrganize::encode,
-                CPacketVaultOrganize::decode,
-                CPacketVaultOrganize::handle);
-        CHANNEL.registerMessage(
-                id++,
-                SPacketVaultContents.class,
-                SPacketVaultContents::encode,
-                SPacketVaultContents::decode,
-                SPacketVaultContents::handle);
-        CHANNEL.registerMessage(
-                id++,
-                SPacketVaultSlotUpdate.class,
-                SPacketVaultSlotUpdate::encode,
-                SPacketVaultSlotUpdate::decode,
-                SPacketVaultSlotUpdate::handle);
-        CHANNEL.registerMessage(
-                id++,
-                CPacketOpenTerminal.class,
-                CPacketOpenTerminal::encode,
-                CPacketOpenTerminal::decode,
-                CPacketOpenTerminal::handle);
-        // CHANNEL.registerMessage(
-        // id++,
-        // CPacketVaultDisplayMode.class,
-        // CPacketVaultDisplayMode::encode,
-        // CPacketVaultDisplayMode::decode,
-        // CPacketVaultDisplayMode::handle);
+        CHANNEL.registerMessage(id++, CPacketVaultAction.class,
+                CPacketVaultAction::encode, CPacketVaultAction::decode, CPacketVaultAction::handle);
+        CHANNEL.registerMessage(id++, CPacketOpenTerminal.class,
+                CPacketOpenTerminal::encode, CPacketOpenTerminal::decode, CPacketOpenTerminal::handle);
+        CHANNEL.registerMessage(id++, CPacketFillCraftingGrid.class,
+                CPacketFillCraftingGrid::encode, CPacketFillCraftingGrid::decode, CPacketFillCraftingGrid::handle);
+
+        CHANNEL.registerMessage(id++, SPacketVaultContents.class,
+                SPacketVaultContents::encode, SPacketVaultContents::decode, SPacketVaultContents::handle);
+        CHANNEL.registerMessage(id++, SPacketVaultDelta.class,
+                SPacketVaultDelta::encode, SPacketVaultDelta::decode, SPacketVaultDelta::handle);
+        CHANNEL.registerMessage(id++, CPacketVaultDisplayMode.class,
+                CPacketVaultDisplayMode::encode, CPacketVaultDisplayMode::decode, CPacketVaultDisplayMode::handle);
     }
 }
