@@ -11,12 +11,7 @@ import java.util.function.Supplier;
 
 public class CPacketVaultAction {
 
-    public enum Type {
-        SCROLL,
-        SEARCH,
-        SORT,
-        ORGANIZE
-    }
+    public enum Type { SCROLL, SEARCH, SORT, ORGANIZE }
 
     private final Type type;
 
@@ -27,10 +22,10 @@ public class CPacketVaultAction {
 
     private CPacketVaultAction(Type type, int scrollRow, String query,
                                VaultSortMode sortMode, boolean sortReversed) {
-        this.type = type;
-        this.scrollRow = scrollRow;
-        this.query = query;
-        this.sortMode = sortMode;
+        this.type         = type;
+        this.scrollRow    = scrollRow;
+        this.query        = query;
+        this.sortMode     = sortMode;
         this.sortReversed = sortReversed;
     }
 
@@ -53,12 +48,9 @@ public class CPacketVaultAction {
     public static void encode(CPacketVaultAction packet, FriendlyByteBuf buf) {
         buf.writeEnum(packet.type);
         switch (packet.type) {
-            case SCROLL -> buf.writeVarInt(packet.scrollRow);
-            case SEARCH -> buf.writeUtf(packet.query, 64);
-            case SORT -> {
-                buf.writeEnum(packet.sortMode);
-                buf.writeBoolean(packet.sortReversed);
-            }
+            case SCROLL   -> buf.writeVarInt(packet.scrollRow);
+            case SEARCH   -> buf.writeUtf(packet.query, 64);
+            case SORT     -> { buf.writeEnum(packet.sortMode); buf.writeBoolean(packet.sortReversed); }
             case ORGANIZE -> {}
         }
     }
@@ -66,9 +58,9 @@ public class CPacketVaultAction {
     public static CPacketVaultAction decode(FriendlyByteBuf buf) {
         Type type = buf.readEnum(Type.class);
         return switch (type) {
-            case SCROLL -> scroll(buf.readVarInt());
-            case SEARCH -> search(buf.readUtf(64));
-            case SORT -> sort(buf.readEnum(VaultSortMode.class), buf.readBoolean());
+            case SCROLL   -> scroll(buf.readVarInt());
+            case SEARCH   -> search(buf.readUtf(64));
+            case SORT     -> sort(buf.readEnum(VaultSortMode.class), buf.readBoolean());
             case ORGANIZE -> organize();
         };
     }
@@ -80,15 +72,9 @@ public class CPacketVaultAction {
             if (!(player.containerMenu instanceof AbstractVaultMenu menu)) return;
 
             switch (packet.type) {
-                case SCROLL -> menu.updateScroll(packet.scrollRow);
-                case SEARCH -> {
-                    menu.updateSearch(packet.query);
-                    menu.updateScroll(0);
-                }
-                case SORT -> {
-                    menu.setSortMode(packet.sortMode);
-                    menu.setSortReversed(packet.sortReversed);
-                }
+                case SCROLL   -> menu.updateScroll(packet.scrollRow);
+                case SEARCH   -> { menu.updateSearch(packet.query); menu.updateScroll(0); }
+                case SORT     -> menu.setSort(packet.sortMode, packet.sortReversed);
                 case ORGANIZE -> menu.organize();
             }
         });

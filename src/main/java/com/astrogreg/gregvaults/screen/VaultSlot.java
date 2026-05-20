@@ -32,6 +32,24 @@ public class VaultSlot extends SlotItemHandler {
         return remapping.getAggregatedStack(this.getSlotIndex());
     }
 
+    @Override
+    public boolean mayPickup(net.minecraft.world.entity.player.Player player) {
+        if (!remapping.isAggregated()) return super.mayPickup(player);
+        return !getItem().isEmpty();
+    }
+
+    @Override
+    public int getMaxStackSize() {
+        if (!remapping.isAggregated()) return super.getMaxStackSize();
+        AggregatedStack agg = remapping.getAggregatedStack(this.getSlotIndex());
+        if (agg == null) return 64;
+        for (int backingSlot : agg.backingSlots) {
+            ItemStack inSlot = remapping.getRealStackPublic(backingSlot);
+            if (!inSlot.isEmpty()) return Math.min(inSlot.getCount(), inSlot.getMaxStackSize());
+        }
+        return agg.displayStack.getMaxStackSize();
+    }
+
     public static class RemappingHandler implements IItemHandlerModifiable {
 
         private final IItemHandler real;
@@ -84,9 +102,9 @@ public class VaultSlot extends SlotItemHandler {
             return index >= 0 ? aggregatedView.get(index) : null;
         }
 
-        private ItemStack getRealStack(int backingSlot) {
+        public ItemStack getRealStackPublic(int backingSlot) {
             if (clientCache != null && backingSlot >= 0 && backingSlot < clientCache.length) {
-                return clientCache[backingSlot] != null ? clientCache[backingSlot] : ItemStack.EMPTY;
+                return clientCache[backingSlot] != null ? clientCache[backingSlot] : net.minecraft.world.item.ItemStack.EMPTY;
             }
             return real.getStackInSlot(backingSlot);
         }
@@ -125,7 +143,7 @@ public class VaultSlot extends SlotItemHandler {
                 if (absolute < 0 || absolute >= aggregatedView.size()) return ItemStack.EMPTY;
                 AggregatedStack agg = aggregatedView.get(absolute);
                 for (int backingSlot : agg.backingSlots) {
-                    ItemStack inSlot = getRealStack(backingSlot);
+                    ItemStack inSlot = getRealStackPublic(backingSlot);
                     if (!inSlot.isEmpty() && ItemStack.isSameItemSameTags(inSlot, agg.displayStack)) {
                         return agg.displayStack.copyWithCount(1);
                     }
@@ -184,7 +202,7 @@ public class VaultSlot extends SlotItemHandler {
                 if (absolute < 0 || absolute >= aggregatedView.size()) return ItemStack.EMPTY;
                 AggregatedStack agg = aggregatedView.get(absolute);
                 for (int backingSlot : agg.backingSlots) {
-                    ItemStack inSlot = getRealStack(backingSlot);
+                    ItemStack inSlot = getRealStackPublic(backingSlot);
                     if (!inSlot.isEmpty() && ItemStack.isSameItemSameTags(inSlot, agg.displayStack)) {
                         ItemStack result = real.extractItem(backingSlot, amount, simulate);
                         if (!result.isEmpty()) return result;
@@ -204,7 +222,7 @@ public class VaultSlot extends SlotItemHandler {
                 AggregatedStack agg = aggregatedView.get(absolute);
                 int total = 0;
                 for (int backingSlot : agg.backingSlots) {
-                    ItemStack inSlot = getRealStack(backingSlot);
+                    ItemStack inSlot = real.getStackInSlot(backingSlot);
                     if (!inSlot.isEmpty() && ItemStack.isSameItemSameTags(inSlot, agg.displayStack)) {
                         total += Math.min(real.getSlotLimit(backingSlot), inSlot.getMaxStackSize());
                     }

@@ -34,8 +34,8 @@ import com.astrogreg.gregvaults.screen.VaultContainerMenu;
 import java.util.List;
 
 public class VaultMachine
-                          extends MultiblockControllerMachine
-                          implements IDropSaveMachine, IMachineModifyDrops {
+        extends MultiblockControllerMachine
+        implements IDropSaveMachine, IMachineModifyDrops {
 
     public enum VaultTier {
 
@@ -75,7 +75,8 @@ public class VaultMachine
 
     public enum BatchSyncMode {
         AUTO,
-        DELTA_ONLY
+        DELTA_ONLY,
+        FULL_SNAPSHOT
     }
 
     private int batchDepth = 0;
@@ -133,8 +134,9 @@ public class VaultMachine
         if (batchDepth == 0) {
             dirtySlots.clear();
             batchSyncMode = requestedMode;
-        } else if (requestedMode == BatchSyncMode.DELTA_ONLY) {
-
+        } else if (requestedMode == BatchSyncMode.FULL_SNAPSHOT) {
+            batchSyncMode = BatchSyncMode.FULL_SNAPSHOT;
+        } else if (requestedMode == BatchSyncMode.DELTA_ONLY && batchSyncMode != BatchSyncMode.FULL_SNAPSHOT) {
             batchSyncMode = BatchSyncMode.DELTA_ONLY;
         }
         batchDepth++;
@@ -161,10 +163,9 @@ public class VaultMachine
             return;
         }
 
-        boolean allowFullSnapshot = batchSyncMode != BatchSyncMode.DELTA_ONLY;
-        if (allowFullSnapshot && dirtySlots.size() > 256) {
+        if (batchSyncMode == BatchSyncMode.FULL_SNAPSHOT || dirtySlots.size() > 256) {
             sendFullSnapshot(new java.util.ArrayList<>(activeViewers));
-        } else {
+        } else if (batchSyncMode != BatchSyncMode.DELTA_ONLY || !dirtySlots.isEmpty()) {
             sendDirtySlotDeltas();
         }
         dirtySlots.clear();
@@ -311,12 +312,12 @@ public class VaultMachine
 
     @Override
     public InteractionResult onUse(
-                                   BlockState state,
-                                   net.minecraft.world.level.Level level,
-                                   BlockPos pos,
-                                   Player player,
-                                   InteractionHand hand,
-                                   BlockHitResult hit) {
+            BlockState state,
+            net.minecraft.world.level.Level level,
+            BlockPos pos,
+            Player player,
+            InteractionHand hand,
+            BlockHitResult hit) {
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
             if (!isFormed()) return InteractionResult.PASS;
             final int[] windowIdHolder = { -1 };

@@ -32,5 +32,7 @@ public class VaultNetwork {
                 SPacketVaultDelta::encode, SPacketVaultDelta::decode, SPacketVaultDelta::handle);
         CHANNEL.registerMessage(id++, CPacketVaultDisplayMode.class,
                 CPacketVaultDisplayMode::encode, CPacketVaultDisplayMode::decode, CPacketVaultDisplayMode::handle);
+        CHANNEL.registerMessage(id++, CPacketStackedPickup.class,
+                CPacketStackedPickup::encode, CPacketStackedPickup::decode, CPacketStackedPickup::handle);
     }
 }
