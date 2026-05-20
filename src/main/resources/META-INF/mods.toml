@@ -22,6 +22,12 @@ license = "${mod_license}"
         ordering = "NONE"
         side = "BOTH"
     [[dependencies.${mod_id}]]
+        modId = "emi"
+        mandatory = false
+        versionRange = "[1.0,)"
+        ordering = "AFTER"
+        side = "CLIENT"
+    [[dependencies.${mod_id}]]
         modId = "gtceu"
         mandatory = true
         versionRange = "[${gtceu_version},)"
