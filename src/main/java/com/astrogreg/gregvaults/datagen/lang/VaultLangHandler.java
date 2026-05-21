@@ -33,5 +33,8 @@ public class VaultLangHandler {
         provider.add("tooltip.gregtechvaults.vault_core_mk3", "§7Adds %d §7item slots to the vault.");
         provider.add("key.categories.gregtechvaults", "GregTech Vaults");
         provider.add("key.gregtechvaults.open_terminal", "Open Wireless Vault Terminal");
+        provider.add("config.jade.plugin_gregtechvaults.vault_info", "Vaults Information");
+        provider.add("tooltip.gregtechvaults.jade.total_slots", "%s Total Slots");
+        provider.add("tooltip.gregtechvaults.jade.available_slots", "%s Available Slots");
     }
 }

@@ -235,6 +235,14 @@ public class VaultMachine
         return totalSlots;
     }
 
+    public int getAvailableSlots() {
+        int empty = 0;
+        for (int i = 0; i < itemHandler.getSlots(); i++) {
+            if (itemHandler.getStackInSlot(i).isEmpty()) empty++;
+        }
+        return empty;
+    }
+
     public ItemStackHandler getItemHandler() {
         return itemHandler;
     }

@@ -147,6 +147,7 @@ dependencies {
     modRuntimeOnly("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
     modCompileOnly("dev.emi:emi-forge:${emi_version}+${minecraft_version}:api")
     modRuntimeOnly("curse.maven:jade-324717:5390389")
+    modCompileOnly("curse.maven:jade-324717:5390389")
 
     // GregTech and dependencies
     modImplementation("com.gregtechceu.gtceu:gtceu-${minecraft_version}:${gtceu_version}")
