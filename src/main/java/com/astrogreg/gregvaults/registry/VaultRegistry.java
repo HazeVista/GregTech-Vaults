@@ -6,13 +6,7 @@ import com.gregtechceu.gtceu.api.machine.multiblock.PartAbility;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.tags.BlockTags;
-import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.level.block.SoundType;
-import net.minecraftforge.common.extensions.IForgeMenuType;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
 
 import com.astrogreg.gregvaults.GregTechVaults;
 import com.astrogreg.gregvaults.blocks.VaultCoreBlock;
@@ -22,9 +16,12 @@ import com.astrogreg.gregvaults.items.WirelessTerminalItem;
 import com.astrogreg.gregvaults.multiblock.AutoInputItemConfigHandler;
 import com.astrogreg.gregvaults.multiblock.VaultInterfacePart;
 import com.astrogreg.gregvaults.screen.VaultContainerMenu;
+import com.astrogreg.gregvaults.screen.VaultScreen;
 import com.astrogreg.gregvaults.screen.VaultTerminalMenu;
+import com.astrogreg.gregvaults.screen.VaultTerminalScreen;
 import com.tterrag.registrate.util.entry.BlockEntry;
 import com.tterrag.registrate.util.entry.ItemEntry;
+import com.tterrag.registrate.util.entry.MenuEntry;
 
 @SuppressWarnings("all")
 public final class VaultRegistry {
@@ -66,21 +63,22 @@ public final class VaultRegistry {
             .properties(p -> p.stacksTo(1))
             .register();
 
-    public static final DeferredRegister<MenuType<?>> MENU_TYPES = DeferredRegister.create(
-            ForgeRegistries.MENU_TYPES, GregTechVaults.MOD_ID);
+    public static final MenuEntry<VaultContainerMenu> VAULT_MENU = GregTechVaults.REGISTRATE
+            .menu("vault_menu",
+                    (type, windowId, inventory, buffer) -> new VaultContainerMenu(windowId, inventory, buffer),
+                    () -> VaultScreen::new)
+            .register();
 
-    public static final RegistryObject<MenuType<VaultContainerMenu>> VAULT_MENU = MENU_TYPES.register("vault_menu",
-            () -> IForgeMenuType.create(VaultContainerMenu::new));
-
-    public static final RegistryObject<MenuType<VaultTerminalMenu>> VAULT_TERMINAL_MENU = MENU_TYPES
-            .register("vault_terminal_menu", () -> IForgeMenuType.create(VaultTerminalMenu::new));
+    public static final MenuEntry<VaultTerminalMenu> VAULT_TERMINAL_MENU = GregTechVaults.REGISTRATE
+            .menu("vault_terminal_menu",
+                    (type, windowId, inventory, buffer) -> new VaultTerminalMenu(windowId, inventory, buffer),
+                    () -> VaultTerminalScreen::new)
+            .register();
 
     public static PartAbility VAULT_INTERFACE_ABILITY;
     public static MachineDefinition VAULT_INTERFACE;
 
-    public static void registerEventBus(IEventBus bus) {
-        MENU_TYPES.register(bus);
-    }
+    public static void init() {}
 
     public static void registerLinkables() {
         VaultLinkables.register(WIRELESS_VAULT_TERMINAL.get(), WirelessTerminalItem.LINKABLE_HANDLER);
