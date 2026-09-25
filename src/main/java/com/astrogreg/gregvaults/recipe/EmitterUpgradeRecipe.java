@@ -16,7 +16,10 @@ import com.astrogreg.gregvaults.items.WirelessTerminalItem;
 import com.astrogreg.gregvaults.items.WirelessTerminalItem.EmitterTier;
 import com.astrogreg.gregvaults.registry.VaultRegistry;
 import com.google.gson.JsonObject;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.Objects;
 
 public class EmitterUpgradeRecipe extends CustomRecipe {
 
@@ -31,33 +34,32 @@ public class EmitterUpgradeRecipe extends CustomRecipe {
     }
 
     @Override
-    public boolean matches(CraftingContainer inv, Level level) {
-        boolean foundTerminal = false;
-        boolean foundEmitter = false;
+    public boolean matches(CraftingContainer inv, @NotNull Level level) {
+        int terminalCount = 0;
+        int emitterCount = 0;
 
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
             if (stack.isEmpty()) continue;
 
             if (stack.getItem() instanceof WirelessTerminalItem) {
-
-                if (WirelessTerminalItem.getEmitterTier(stack).level == tier.level - 1) {
-                    foundTerminal = true;
-                } else {
+                terminalCount++;
+                if (terminalCount > 1 || WirelessTerminalItem.getEmitterTier(stack).level != tier.level - 1) {
                     return false;
                 }
             } else if (stack.getItem() == emitterItem) {
-                foundEmitter = true;
+                emitterCount++;
+                if (emitterCount > 1) return false;
             } else {
                 return false;
             }
         }
 
-        return foundTerminal && foundEmitter;
+        return terminalCount == 1 && emitterCount == 1;
     }
 
     @Override
-    public ItemStack assemble(CraftingContainer inv, RegistryAccess registryAccess) {
+    public @NotNull ItemStack assemble(CraftingContainer inv, @NotNull RegistryAccess registryAccess) {
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack stack = inv.getItem(i);
             if (stack.getItem() instanceof WirelessTerminalItem) {
@@ -71,7 +73,7 @@ public class EmitterUpgradeRecipe extends CustomRecipe {
     }
 
     @Override
-    public ItemStack getResultItem(RegistryAccess registryAccess) {
+    public @NotNull ItemStack getResultItem(@NotNull RegistryAccess registryAccess) {
         ItemStack result = new ItemStack(VaultRegistry.WIRELESS_VAULT_TERMINAL.get());
         WirelessTerminalItem.setEmitterTier(result, tier);
         return result;
@@ -83,23 +85,23 @@ public class EmitterUpgradeRecipe extends CustomRecipe {
     }
 
     @Override
-    public RecipeSerializer<?> getSerializer() {
+    public @NotNull RecipeSerializer<?> getSerializer() {
         return VaultRecipes.EMITTER_UPGRADE_SERIALIZER.get();
     }
 
     public static class Serializer implements RecipeSerializer<EmitterUpgradeRecipe> {
 
         @Override
-        public EmitterUpgradeRecipe fromJson(ResourceLocation id, JsonObject json) {
+        public @NotNull EmitterUpgradeRecipe fromJson(@NotNull ResourceLocation id, JsonObject json) {
             int tierLevel = json.get("tier").getAsInt();
             EmitterTier tier = EmitterTier.fromLevel(tierLevel);
             ResourceLocation itemId = new ResourceLocation(json.get("emitter").getAsString());
-            net.minecraft.world.item.Item item = ForgeRegistries.ITEMS.getValue(itemId);
+            net.minecraft.world.item.Item item = Objects.requireNonNull(ForgeRegistries.ITEMS.getValue(itemId));
             return new EmitterUpgradeRecipe(id, tier, item);
         }
 
         @Override
-        public @Nullable EmitterUpgradeRecipe fromNetwork(ResourceLocation id, FriendlyByteBuf buf) {
+        public @Nullable EmitterUpgradeRecipe fromNetwork(@NotNull ResourceLocation id, FriendlyByteBuf buf) {
             EmitterTier tier = EmitterTier.fromLevel(buf.readInt());
             ResourceLocation itemId = buf.readResourceLocation();
             net.minecraft.world.item.Item item = ForgeRegistries.ITEMS.getValue(itemId);
@@ -109,7 +111,7 @@ public class EmitterUpgradeRecipe extends CustomRecipe {
         @Override
         public void toNetwork(FriendlyByteBuf buf, EmitterUpgradeRecipe recipe) {
             buf.writeInt(recipe.tier.level);
-            buf.writeResourceLocation(ForgeRegistries.ITEMS.getKey(recipe.emitterItem));
+            buf.writeResourceLocation(Objects.requireNonNull(ForgeRegistries.ITEMS.getKey(recipe.emitterItem)));
         }
     }
 }

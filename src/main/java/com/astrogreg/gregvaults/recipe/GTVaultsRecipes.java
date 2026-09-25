@@ -9,9 +9,11 @@ import com.gregtechceu.gtceu.data.recipe.VanillaRecipeHelper;
 
 import net.minecraft.data.recipes.FinishedRecipe;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import com.astrogreg.gregvaults.GregTechVaults;
+import com.astrogreg.gregvaults.items.WirelessTerminalItem;
 import com.astrogreg.gregvaults.items.WirelessTerminalItem.EmitterTier;
 import com.astrogreg.gregvaults.registry.VaultRegistry;
 import com.google.gson.JsonObject;
@@ -53,8 +55,10 @@ public class GTVaultsRecipes {
                 VaultRegistry.VAULT_CORE_MK3.asStack(), "AhA", "BCB", "AwA", 'A', new MaterialEntry(plate, Titanium),
                 'B', new MaterialEntry(rodLong, Titanium), 'C', GTMachines.TITANIUM_CRATE.asStack());
 
+        ItemStack wirelessTerminal = VaultRegistry.WIRELESS_VAULT_TERMINAL.asStack();
+        WirelessTerminalItem.setEmitterTier(wirelessTerminal, EmitterTier.LV);
         VanillaRecipeHelper.addShapedRecipe(provider, true, GregTechVaults.id("wireless_vault_terminal"),
-                VaultRegistry.WIRELESS_VAULT_TERMINAL.asStack(), "AAA", "CBD", "EdE", 'A',
+                wirelessTerminal, "AAA", "CBD", "EdE", 'A',
                 new MaterialEntry(plate, Steel), 'B', new MaterialEntry(plate, Glass), 'C', GTItems.EMITTER_LV,
                 'D', GTItems.SENSOR_LV, 'E', new MaterialEntry(screw, Steel));
 
@@ -62,7 +66,6 @@ public class GTVaultsRecipes {
                 VaultRegistry.VAULT_INTERFACE.asStack(), "w", "B", "A", 'A', GTBlocks.BRONZE_HULL,
                 'B', new MaterialEntry(pipeNormalFluid, Bronze));
 
-        addEmitterUpgrade(provider, EmitterTier.LV, GTItems.EMITTER_LV.get());
         addEmitterUpgrade(provider, EmitterTier.MV, GTItems.EMITTER_MV.get());
         addEmitterUpgrade(provider, EmitterTier.HV, GTItems.EMITTER_HV.get());
         addEmitterUpgrade(provider, EmitterTier.EV, GTItems.EMITTER_EV.get());

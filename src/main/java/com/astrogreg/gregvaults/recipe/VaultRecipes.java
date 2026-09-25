@@ -1,19 +1,16 @@
 package com.astrogreg.gregvaults.recipe;
 
+import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.crafting.RecipeSerializer;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
 
 import com.astrogreg.gregvaults.GregTechVaults;
+import com.tterrag.registrate.util.entry.RegistryEntry;
 
 public class VaultRecipes {
 
-    public static final DeferredRegister<RecipeSerializer<?>> SERIALIZERS = DeferredRegister
-            .create(ForgeRegistries.RECIPE_SERIALIZERS, GregTechVaults.MOD_ID);
-
-    public static final RegistryObject<RecipeSerializer<EmitterUpgradeRecipe>> EMITTER_UPGRADE_SERIALIZER = SERIALIZERS
-            .register("emitter_upgrade", EmitterUpgradeRecipe.Serializer::new);
+    public static final RegistryEntry<RecipeSerializer<EmitterUpgradeRecipe>> EMITTER_UPGRADE_SERIALIZER = GregTechVaults.REGISTRATE
+            .simple("emitter_upgrade", Registries.RECIPE_SERIALIZER,
+                    EmitterUpgradeRecipe.Serializer::new);
 
     public static void init() {}
 }
