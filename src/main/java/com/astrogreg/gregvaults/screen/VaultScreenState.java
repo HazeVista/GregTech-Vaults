@@ -16,7 +16,6 @@ public class VaultScreenState {
 
     public static class State {
 
-        public VaultDisplayMode displayMode = VaultDisplayMode.SLOTS;
         public VaultSortMode sortMode = VaultSortMode.NAME;
         public boolean sortReversed = false;
         public String searchQuery = "";
@@ -32,10 +31,8 @@ public class VaultScreenState {
         return cached;
     }
 
-    public static void save(VaultDisplayMode displayMode, VaultSortMode sortMode,
-                            boolean sortReversed, String searchQuery) {
+    public static void save(VaultSortMode sortMode, boolean sortReversed, String searchQuery) {
         State state = get();
-        state.displayMode = displayMode;
         state.sortMode = sortMode;
         state.sortReversed = sortReversed;
         state.searchQuery = searchQuery != null ? searchQuery : "";
@@ -49,8 +46,12 @@ public class VaultScreenState {
         try {
             String json = Files.readString(file);
             State loaded = GSON.fromJson(json, State.class);
-            if (loaded != null) cached = loaded;
-        } catch (IOException ignored) {}
+            if (loaded != null) {
+                if (loaded.sortMode == null) loaded.sortMode = VaultSortMode.NAME;
+                if (loaded.searchQuery == null) loaded.searchQuery = "";
+                cached = loaded;
+            }
+        } catch (IOException | RuntimeException ignored) {}
     }
 
     private static void persist() {

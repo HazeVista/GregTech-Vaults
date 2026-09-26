@@ -37,9 +37,9 @@ public class VaultRecipeHandler<T extends AbstractContainerMenu>
     public EmiPlayerInventory getInventory(AbstractContainerScreen<T> screen) {
         T menu = screen.getMenu();
         List<EmiStack> stacks = new ArrayList<>();
-        if (menu instanceof AbstractVaultMenu m && m.clientCache != null) {
-            for (ItemStack s : m.clientCache) {
-                if (s != null && !s.isEmpty()) stacks.add(EmiStack.of(s));
+        if (menu instanceof AbstractVaultMenu m) {
+            for (var entry : m.getCatalogPage()) {
+                stacks.add(EmiStack.of(entry.stack()));
             }
             for (int i = m.playerSlotsStart; i < m.craftingSlotsStart; i++) {
                 Slot slot = menu.slots.get(i);

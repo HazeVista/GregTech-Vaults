@@ -6,8 +6,7 @@
   "refmap": "mixins.gregtechvaults.refmap.json",
   "mixins": [],
   "client": [
-    "MixinMachineModel",
-    "MixinAbstractContainerScreen"
+    "MixinMachineModel"
   ],
   "injectors": {
     "defaultRequire": 1

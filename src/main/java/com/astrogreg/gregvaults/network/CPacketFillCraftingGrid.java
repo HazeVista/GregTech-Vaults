@@ -11,6 +11,7 @@ import net.minecraftforge.items.ItemStackHandler;
 import net.minecraftforge.network.NetworkEvent;
 
 import com.astrogreg.gregvaults.screen.AbstractVaultMenu;
+import com.astrogreg.gregvaults.storage.VaultStorage;
 
 import java.util.function.Supplier;
 
@@ -89,7 +90,7 @@ public class CPacketFillCraftingGrid {
     private static void fillCraftingGrid(AbstractVaultMenu menu, ItemStackHandler vaultHandler,
                                          Ingredient[] grid, ServerPlayer player) {
         if (menu.machine != null)
-            menu.machine.beginBatch(com.astrogreg.gregvaults.multiblock.VaultMachine.BatchSyncMode.DELTA_ONLY);
+            menu.machine.beginBatch();
         menu.beginCraftingGridBulkUpdate();
         try {
             for (int g = 0; g < menu.craftingGrid.getContainerSize(); g++) {
@@ -121,6 +122,15 @@ public class CPacketFillCraftingGrid {
     }
 
     private static ItemStack tryExtractVault(ItemStackHandler handler, Ingredient ingredient) {
+        if (handler instanceof VaultStorage storage) {
+            for (VaultStorage.Entry entry : storage.getEntries()) {
+                ItemStack stack = entry.displayStack();
+                if (ingredient.test(stack)) {
+                    return storage.extract(entry.key(), 1, false);
+                }
+            }
+            return ItemStack.EMPTY;
+        }
         for (int v = 0; v < handler.getSlots(); v++) {
             ItemStack s = handler.getStackInSlot(v);
             if (s.isEmpty() || !ingredient.test(s)) continue;
@@ -131,6 +141,7 @@ public class CPacketFillCraftingGrid {
     }
 
     private static ItemStack tryInsertVault(ItemStackHandler handler, ItemStack stack) {
+        if (handler instanceof VaultStorage storage) return storage.insert(stack, false);
         for (int v = 0; v < handler.getSlots() && !stack.isEmpty(); v++) {
             stack = handler.insertItem(v, stack, false);
         }

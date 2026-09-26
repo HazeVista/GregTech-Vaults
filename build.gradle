@@ -158,6 +158,10 @@ dependencies {
     // lombok
     compileOnly 'org.projectlombok:lombok:1.18.24'
     annotationProcessor 'org.projectlombok:lombok:1.18.24'
+
+    // AE2
+    modRuntimeOnly("curse.maven:applied-energistics-2-223794:7148487")
+    modRuntimeOnly("curse.maven:guideme-1173950:8204776")
 }
 
 // See com.example.examplemod.mixin.DummyMixin for information about mixins

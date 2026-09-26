@@ -1,404 +1,428 @@
 package com.astrogreg.gregvaults.screen;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
 
+import com.astrogreg.gregvaults.GregTechVaults;
 import com.astrogreg.gregvaults.network.CPacketVaultAction;
-import com.astrogreg.gregvaults.network.CPacketVaultDisplayMode;
+import com.astrogreg.gregvaults.network.CPacketVaultCatalogClick;
 import com.astrogreg.gregvaults.network.VaultNetwork;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@SuppressWarnings("all")
-public abstract class AbstractVaultScreen<T extends AbstractVaultMenu>
-        extends AbstractContainerScreen<T> {
+public abstract class AbstractVaultScreen<T extends AbstractVaultMenu> extends AbstractContainerScreen<T> {
 
-    protected static final ResourceLocation TEXTURE =
-            new ResourceLocation("minecraft", "textures/gui/container/generic_54.png");
-    protected static final ResourceLocation ARROW_TEXTURE =
-            new ResourceLocation("gregtechvaults", "textures/gui/overlay/crafting_table.png");
-    protected static final ResourceLocation SORT_TEXTURE         = new ResourceLocation("gregtechvaults", "textures/gui/overlay/sort_inventory.png");
-    protected static final ResourceLocation STACKED_VIEW_TEXTURE = new ResourceLocation("gregtechvaults", "textures/gui/overlay/stacked_view.png");
-    protected static final ResourceLocation SLOT_VIEW_TEXTURE    = new ResourceLocation("gregtechvaults", "textures/gui/overlay/slot_view.png");
-    protected static final ResourceLocation A_FIRST_TEXTURE      = new ResourceLocation("gregtechvaults", "textures/gui/overlay/a_first.png");
-    protected static final ResourceLocation Z_FIRST_TEXTURE      = new ResourceLocation("gregtechvaults", "textures/gui/overlay/z_first.png");
-    protected static final ResourceLocation HIGHEST_TEXTURE      = new ResourceLocation("gregtechvaults", "textures/gui/overlay/highest_first.png");
-    protected static final ResourceLocation LOWEST_TEXTURE       = new ResourceLocation("gregtechvaults", "textures/gui/overlay/lowest_first.png");
+    protected static final ResourceLocation TEXTURE = new ResourceLocation("minecraft",
+            "textures/gui/container/generic_54.png");
+    protected static final ResourceLocation ARROW_TEXTURE = new ResourceLocation(GregTechVaults.MOD_ID,
+            "textures/gui/overlay/crafting_table.png");
+    protected static final ResourceLocation A_FIRST_TEXTURE = new ResourceLocation(GregTechVaults.MOD_ID,
+            "textures/gui/overlay/a_first.png");
+    protected static final ResourceLocation Z_FIRST_TEXTURE = new ResourceLocation(GregTechVaults.MOD_ID,
+            "textures/gui/overlay/z_first.png");
+    protected static final ResourceLocation HIGHEST_TEXTURE = new ResourceLocation(GregTechVaults.MOD_ID,
+            "textures/gui/overlay/highest_first.png");
+    protected static final ResourceLocation LOWEST_TEXTURE = new ResourceLocation(GregTechVaults.MOD_ID,
+            "textures/gui/overlay/lowest_first.png");
 
-    protected static final int TEX_W        = 176;
-    protected static final int TEX_TOP_H    = 17;
-    protected static final int TEX_ROW_H    = 18;
+    protected static final int TEX_W = 176;
+    protected static final int TEX_TOP_H = 17;
+    protected static final int TEX_ROW_H = 18;
     protected static final int TEX_PLAYER_V = 125;
     protected static final int TEX_PLAYER_H = 96;
 
-    protected static final int SB_X       = TEX_W + 2;
-    protected static final int SB_W       = 12;
-    protected static final int SB_BTN     = 12;
-    private   static final int C_SB_TRACK = 0xFF8B8B8B;
-    private   static final int C_SB_THUMB = 0xFFCCCCCC;
-    private   static final int C_SB_BTN   = 0xFFAAAAAA;
-    private   static final int C_INACTIVE  = 0x99111111;
+    private static final int SEARCH_X = 44;
+    private static final int SEARCH_Y = 4;
+    private static final int SEARCH_W = TEX_W - SEARCH_X - AbstractVaultMenu.SLOTS_X;
+    private static final int SEARCH_H = 12;
+    private static final int C_SEARCH_EDGE_DARK = 0xFF555555;
+    private static final int C_SEARCH_EDGE_LIGHT = 0xFFFFFFFF;
+    private static final int C_SEARCH_NORMAL = 0xFF606060;
+    private static final int C_SEARCH_FOCUSED = 0xFFA8A8A8;
+    private static final int SB_JOIN_X = TEX_W - 3;
+    private static final int SB_X = TEX_W - 1;
+    private static final int SB_W = 9;
+    private static final int SB_EXTENSION_TOP = 2;
+    private static final int SB_BOTTOM_MARGIN = 2;
+    private static final int C_SB_PANEL = 0xFFC6C6C6;
+    private static final int C_SB_RECESS = 0xFF555555;
+    private static final int C_SB_TRACK = 0xFF8B8B8B;
+    private static final int C_SB_THUMB = 0xFFD8D8D8;
+    private static final int C_SB_HIGHLIGHT = 0xFFFFFFFF;
+    private static final int BTN_X_OFFSET = -20;
+    private static final int BTN_SIZE = 18;
+    private static final int BTN_GAP = 2;
 
-    protected static final int BTN_X_OFFSET = -20;
-    protected static final int BTN_SIZE     = 18;
-    protected static final int BTN_GAP      = 2;
+    private record IconButton(int relX, int relY, Component tooltip, Runnable action) {
 
-    private record IconBtn(int relX, int relY, int size, Component tooltip, Runnable action) {
-        boolean isHovered(int screenX, int screenY, int mx, int my) {
-            int ax = screenX + relX, ay = screenY + relY;
-            return mx >= ax && mx < ax + size && my >= ay && my < ay + size;
+        boolean isHovered(int screenX, int screenY, int mouseX, int mouseY) {
+            int x = screenX + relX;
+            int y = screenY + relY;
+            return mouseX >= x && mouseX < x + BTN_SIZE && mouseY >= y && mouseY < y + BTN_SIZE;
         }
     }
 
     protected final int visibleRows;
-    protected final int sbH;
-    protected final int sbTrackH;
-    private int btnScreenX, btnScreenY;
+    private final int scrollbarHeight;
 
-    protected EditBox         searchBox;
-    private   List<IconBtn>   iconButtons;
-    protected int             scrollOffset = 0;
-    protected int        sbScreenX, sbScreenTopY, sbScreenBotY;
+    protected EditBox searchBox;
+    private List<IconButton> iconButtons = List.of();
+    private int scrollOffset;
+    private int scrollbarScreenX;
+    private int scrollbarScreenTopY;
+    private boolean draggingScrollbar;
+    private int buttonScreenX;
+    private int buttonScreenY;
 
-    private   VaultSortMode   currentSortMode = VaultSortMode.NAME;
-    private   boolean         currentSortReversed = false;
-    private   boolean         nameSortReversed = false;
-    private   boolean         amountSortReversed = false;
+    private VaultSortMode currentSortMode = VaultSortMode.NAME;
+    private boolean currentSortReversed;
+    private boolean nameSortReversed;
+    private boolean amountSortReversed;
 
-    protected AbstractVaultScreen(T menu, Inventory playerInv, Component title) {
-        super(menu, playerInv, title);
+    protected AbstractVaultScreen(T menu, Inventory playerInventory, Component title) {
+        super(menu, playerInventory, title);
         this.visibleRows = menu.visibleRows;
-        this.sbH         = visibleRows * TEX_ROW_H;
-        this.sbTrackH    = sbH - 2 * SB_BTN;
-        this.imageWidth  = TEX_W + 2 + SB_W;
+        this.scrollbarHeight = visibleRows * TEX_ROW_H - SB_BOTTOM_MARGIN;
+        this.imageWidth = TEX_W;
         this.imageHeight = menu.hotbarY + AbstractVaultMenu.SLOT_SIZE + 4;
     }
 
     @Override
     protected void init() {
         super.init();
+        scrollbarScreenX = leftPos + SB_X;
+        scrollbarScreenTopY = topPos + TEX_TOP_H;
+        buttonScreenX = leftPos;
+        buttonScreenY = topPos;
 
-        sbScreenX    = leftPos + SB_X;
-        sbScreenTopY = topPos + TEX_TOP_H;
-        sbScreenBotY = sbScreenTopY + sbH - SB_BTN;
-        btnScreenX   = leftPos;
-        btnScreenY   = topPos;
-
-        searchBox = new EditBox(font,
-                leftPos + AbstractVaultMenu.SLOTS_X, topPos + 4,
-                TEX_W - AbstractVaultMenu.SLOTS_X * 2 - 40, 10,
-                Component.empty());
+        searchBox = new EditBox(font, leftPos + SEARCH_X + 3, topPos + SEARCH_Y + 2,
+                SEARCH_W - 6, SEARCH_H - 4, Component.empty());
         searchBox.setMaxLength(64);
         searchBox.setHint(Component.literal("Search..."));
         searchBox.setBordered(false);
+        searchBox.setTextColor(0xFFFFFF);
         searchBox.setResponder(query -> {
             scrollOffset = 0;
-            menu.updateSearch(query);
-            menu.updateScroll(0);
             VaultNetwork.CHANNEL.sendToServer(CPacketVaultAction.search(query));
-            onSearch(query);
         });
         addRenderableWidget(searchBox);
 
-        iconButtons = new ArrayList<>();
-        iconButtons.add(new IconBtn(BTN_X_OFFSET, 3 + (BTN_SIZE + BTN_GAP) * 0, BTN_SIZE,
-                Component.literal("Organize"),
-                () -> VaultNetwork.CHANNEL.sendToServer(CPacketVaultAction.organize())));
-        iconButtons.add(new IconBtn(BTN_X_OFFSET, 3 + (BTN_SIZE + BTN_GAP) * 1, BTN_SIZE,
-                Component.literal("Stacked / Slot view"),
-                () -> {
-                    VaultDisplayMode next = menu.getDisplayMode().next();
-                    menu.setDisplayMode(next);
-                    VaultNetwork.CHANNEL.sendToServer(new CPacketVaultDisplayMode(next));
-                }));
-        iconButtons.add(new IconBtn(BTN_X_OFFSET, 3 + (BTN_SIZE + BTN_GAP) * 2, BTN_SIZE,
-                Component.literal("Sort: Name"),
-                () -> {
+        List<IconButton> buttons = new ArrayList<>();
+        buttons.add(new IconButton(BTN_X_OFFSET, 3,
+                Component.literal("Sort: Name"), () -> {
                     nameSortReversed = !nameSortReversed;
-
                     currentSortMode = VaultSortMode.NAME;
                     currentSortReversed = nameSortReversed;
-
-                    menu.setSort(VaultSortMode.NAME, nameSortReversed);
-                    VaultNetwork.CHANNEL.sendToServer(CPacketVaultAction.sort(VaultSortMode.NAME, nameSortReversed));
+                    scrollOffset = 0;
+                    VaultNetwork.CHANNEL.sendToServer(
+                            CPacketVaultAction.sort(VaultSortMode.NAME, nameSortReversed));
                 }));
-        iconButtons.add(new IconBtn(BTN_X_OFFSET, 3 + (BTN_SIZE + BTN_GAP) * 3, BTN_SIZE,
-                Component.literal("Sort: Amount"),
-                () -> {
+        buttons.add(new IconButton(BTN_X_OFFSET, 3 + BTN_SIZE + BTN_GAP,
+                Component.literal("Sort: Amount"), () -> {
                     amountSortReversed = !amountSortReversed;
-
                     currentSortMode = VaultSortMode.COUNT;
                     currentSortReversed = amountSortReversed;
-
-                    menu.setSort(VaultSortMode.COUNT, amountSortReversed);
-                    VaultNetwork.CHANNEL.sendToServer(CPacketVaultAction.sort(VaultSortMode.COUNT, amountSortReversed));
+                    scrollOffset = 0;
+                    VaultNetwork.CHANNEL.sendToServer(
+                            CPacketVaultAction.sort(VaultSortMode.COUNT, amountSortReversed));
                 }));
+        iconButtons = List.copyOf(buttons);
 
         VaultScreenState.State state = VaultScreenState.get();
-        if (state.displayMode != VaultDisplayMode.SLOTS) {
-            menu.setDisplayMode(state.displayMode);
-            VaultNetwork.CHANNEL.sendToServer(new CPacketVaultDisplayMode(state.displayMode));
-        }
         currentSortMode = state.sortMode;
         currentSortReversed = state.sortReversed;
+        if (state.sortMode == VaultSortMode.NAME) nameSortReversed = state.sortReversed;
+        else amountSortReversed = state.sortReversed;
+
         if (state.sortMode != VaultSortMode.NAME || state.sortReversed) {
-            menu.setSort(state.sortMode, state.sortReversed);
             VaultNetwork.CHANNEL.sendToServer(CPacketVaultAction.sort(state.sortMode, state.sortReversed));
         }
         if (state.searchQuery != null && !state.searchQuery.isEmpty()) {
             searchBox.setValue(state.searchQuery);
         }
-
-        currentSortMode = state.sortMode;
-        currentSortReversed = state.sortReversed;
-
-        if (state.sortMode == VaultSortMode.NAME) {
-            nameSortReversed = state.sortReversed;
-        } else if (state.sortMode == VaultSortMode.COUNT) {
-            amountSortReversed = state.sortReversed;
-        }
-
         onInit();
     }
 
     protected void onInit() {}
 
-    protected void onSearch(String query) {}
+    protected void renderExtras(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {}
 
     protected int maxScroll() {
-        return Math.max(0, menu.getTotalFilteredRows() - visibleRows);
+        return Math.max(0, menu.getTotalCatalogRows() - visibleRows);
+    }
+
+    public void syncScrollFromServer(int scrollRow) {
+        scrollOffset = Math.max(0, Math.min(maxScroll(), scrollRow));
     }
 
     protected void applyScroll(int newScroll) {
-        newScroll = Math.max(0, Math.min(maxScroll(), newScroll));
-        if (newScroll == scrollOffset) return;
-        scrollOffset = newScroll;
-        menu.updateScroll(scrollOffset);
+        int clamped = Math.max(0, Math.min(maxScroll(), newScroll));
+        if (clamped == scrollOffset) return;
+        scrollOffset = clamped;
         VaultNetwork.CHANNEL.sendToServer(CPacketVaultAction.scroll(scrollOffset));
     }
 
     @Override
-    public void render(GuiGraphics g, int mx, int my, float pt) {
-        renderBackground(g);
-        super.render(g, mx, my, pt);
-        renderButtonIcons(g);
-        renderExtras(g, mx, my, pt);
-        for (IconBtn btn : iconButtons) {
-            if (btn.isHovered(btnScreenX, btnScreenY, (int) mx, (int) my)) {
-                g.renderTooltip(font, btn.tooltip(), (int) mx, (int) my);
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        renderBackground(graphics);
+        super.render(graphics, mouseX, mouseY, partialTick);
+        renderCatalog(graphics, mouseX, mouseY);
+        renderButtonIcons(graphics);
+        renderExtras(graphics, mouseX, mouseY, partialTick);
+
+        for (IconButton button : iconButtons) {
+            if (button.isHovered(buttonScreenX, buttonScreenY, mouseX, mouseY)) {
+                graphics.renderTooltip(font, button.tooltip(), mouseX, mouseY);
                 break;
             }
         }
-        renderTooltip(g, mx, my);
+        renderTooltip(graphics, mouseX, mouseY);
+        renderCatalogTooltip(graphics, mouseX, mouseY);
     }
 
+    private void renderCatalog(GuiGraphics graphics, int mouseX, int mouseY) {
+        List<VaultCatalogEntry> entries = menu.getCatalogPage();
+        int hovered = catalogIndexAt(mouseX, mouseY);
+        for (int index = 0; index < entries.size(); index++) {
+            int x = leftPos + AbstractVaultMenu.SLOTS_X + index % AbstractVaultMenu.COLS * TEX_ROW_H;
+            int y = topPos + AbstractVaultMenu.SLOTS_Y + index / AbstractVaultMenu.COLS * TEX_ROW_H;
+            if (index == hovered) graphics.fill(x, y, x + 16, y + 16, 0x80FFFFFF);
 
-    // Called by MixinAbstractContainerScreen after vanilla draws the item in the slot
-    public boolean isStackedMode() { return menu.getDisplayMode() == VaultDisplayMode.STACKED; }
-
-    public int getSlotIndex(net.minecraft.world.inventory.Slot slot) {
-        return menu.slots.indexOf(slot);
+            VaultCatalogEntry entry = entries.get(index);
+            graphics.renderItem(entry.stack(), x, y);
+            if (entry.count() > 1) renderCount(graphics, x, y, entry.count());
+        }
     }
 
-    public void applyOptimisticPickup(AggregatedStack agg, boolean half) {
-        if (agg == null || menu.clientCache == null) return;
-        int backingSlot = agg.backingSlots.isEmpty() ? -1 : agg.backingSlots.get(0);
-        if (backingSlot < 0 || backingSlot >= menu.clientCache.length) return;
-        net.minecraft.world.item.ItemStack inSlot = menu.clientCache[backingSlot];
-        if (inSlot == null || inSlot.isEmpty()) return;
-        int amount = half ? Math.max(1, inSlot.getCount() / 2) : inSlot.getCount();
-        int remaining = inSlot.getCount() - amount;
-        menu.clientCache[backingSlot] = remaining > 0
-                ? inSlot.copyWithCount(remaining)
-                : net.minecraft.world.item.ItemStack.EMPTY;
-        menu.applyDeltaUpdate();
+    private void renderCount(GuiGraphics graphics, int x, int y, long count) {
+        String text = formatCount(count);
+        float scale = 0.5f;
+        graphics.pose().pushPose();
+        graphics.pose().translate(x, y, 200);
+        graphics.pose().scale(scale, scale, scale);
+        int textX = (int) ((16f - font.width(text) * scale) / scale);
+        int textY = (int) ((16f - 7f * scale) / scale);
+        graphics.drawString(font, text, textX, textY, 0xFFFFFF, true);
+        graphics.pose().popPose();
     }
 
-    public void renderStackedCountLabel(GuiGraphics g, Slot slot, long total) {
-        String text = formatStackedCount(total);
-        final float scale = 0.5f;
-        g.pose().pushPose();
-        g.pose().translate(slot.x, slot.y, 200);
-        g.pose().scale(scale, scale, scale);
-        int tx = (int) ((16f - font.width(text) * scale) / scale);
-        int ty = (int) ((16f - 7f * scale) / scale);
-        g.drawString(font, text, tx, ty, 0xFFFFFF, true);
-        g.pose().popPose();
+    private void renderCatalogTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
+        int index = catalogIndexAt(mouseX, mouseY);
+        if (index < 0 || index >= menu.getCatalogPage().size()) return;
+
+        VaultCatalogEntry entry = menu.getCatalogPage().get(index);
+        TooltipFlag flag = minecraft.options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED :
+                TooltipFlag.Default.NORMAL;
+        List<Component> lines = new ArrayList<>(entry.stack().getTooltipLines(minecraft.player, flag));
+        lines.add(1, Component.literal(Long.toString(entry.count())).withStyle(ChatFormatting.GRAY));
+        graphics.renderComponentTooltip(font, lines, mouseX, mouseY);
     }
 
-    // Called by MixinAbstractContainerScreen
-    public boolean renderStackedTooltip(GuiGraphics g, AggregatedStack agg, int x, int y) {
-        net.minecraft.world.item.ItemStack display = agg.displayStack.copy();
-        display.setCount(1);
-        java.util.List<net.minecraft.network.chat.Component> lines = display.getTooltipLines(
-                minecraft.player, minecraft.options.advancedItemTooltips
-                        ? net.minecraft.world.item.TooltipFlag.Default.ADVANCED
-                        : net.minecraft.world.item.TooltipFlag.Default.NORMAL);
-        lines.add(1, net.minecraft.network.chat.Component.literal(
-                formatStackedCount(agg.totalCount())).withStyle(net.minecraft.ChatFormatting.GRAY));
-        g.renderComponentTooltip(font, lines, x, y);
-        return true;
-    }
-
-    private static String formatStackedCount(long count) {
-        if (count < 10_000L)        return Long.toString(count);
-        if (count < 1_000_000L)     return (count / 1_000L) + "k";
+    private static String formatCount(long count) {
+        if (count < 10_000L) return Long.toString(count);
+        if (count < 1_000_000L) return (count / 1_000L) + "k";
         if (count < 1_000_000_000L) return (count / 1_000_000L) + "m";
         return (count / 1_000_000_000L) + "b";
     }
 
-    private void renderButtonIcons(GuiGraphics g) {
+    private void renderButtonIcons(GuiGraphics graphics) {
         ResourceLocation[] icons = {
-                SORT_TEXTURE,
-                menu.getDisplayMode() == VaultDisplayMode.STACKED ? STACKED_VIEW_TEXTURE : SLOT_VIEW_TEXTURE,
                 nameSortReversed ? Z_FIRST_TEXTURE : A_FIRST_TEXTURE,
                 amountSortReversed ? LOWEST_TEXTURE : HIGHEST_TEXTURE
         };
-
-        for (int i = 0; i < iconButtons.size(); i++) {
-            IconBtn btn = iconButtons.get(i);
-            g.blit(icons[i], btnScreenX + btn.relX(), btnScreenY + btn.relY(),
+        for (int index = 0; index < iconButtons.size(); index++) {
+            IconButton button = iconButtons.get(index);
+            graphics.blit(icons[index], buttonScreenX + button.relX(), buttonScreenY + button.relY(),
                     0, 0, BTN_SIZE, BTN_SIZE, BTN_SIZE, BTN_SIZE);
         }
     }
 
-    protected void renderExtras(GuiGraphics g, int mx, int my, float pt) {}
-
     @Override
-    protected void renderBg(GuiGraphics g, float pt, int mx, int my) {
-        int x = leftPos, y = topPos;
-        int S = AbstractVaultMenu.SLOT_SIZE;
+    protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
+        int x = leftPos;
+        int y = topPos;
+        int slotSize = AbstractVaultMenu.SLOT_SIZE;
 
-        g.blit(TEXTURE, x, y, 0, 0, TEX_W, TEX_TOP_H);
+        graphics.blit(TEXTURE, x, y, 0, 0, TEX_W, TEX_TOP_H);
+        renderSearchBoxBackground(graphics, x + SEARCH_X, y + SEARCH_Y);
         for (int row = 0; row < visibleRows; row++) {
-            g.blit(TEXTURE, x, y + TEX_TOP_H + row * TEX_ROW_H, 0, 17, TEX_W, TEX_ROW_H);
+            graphics.blit(TEXTURE, x, y + TEX_TOP_H + row * TEX_ROW_H,
+                    0, 17, TEX_W, TEX_ROW_H);
         }
 
-        int craftSecY = y + menu.craftSectionY;
-        int craftSecH = 4 * TEX_ROW_H;
-        g.fill(x,             craftSecY, x + TEX_W,     craftSecY + craftSecH, 0xFFC6C6C6);
-        g.fill(x,             craftSecY, x + 1,          craftSecY + craftSecH, 0xFF000000);
-        g.fill(x + 1,         craftSecY, x + 3,          craftSecY + craftSecH, 0xFFFFFFFE);
-        g.fill(x + TEX_W - 1, craftSecY, x + TEX_W,     craftSecY + craftSecH, 0xFF000000);
-        g.fill(x + TEX_W - 3, craftSecY, x + TEX_W - 1, craftSecY + craftSecH, 0xFF4F4F4F);
+        int craftSectionY = y + menu.craftSectionY;
+        int craftSectionHeight = 4 * TEX_ROW_H;
+        graphics.fill(x, craftSectionY, x + TEX_W, craftSectionY + craftSectionHeight, 0xFFC6C6C6);
+        graphics.fill(x, craftSectionY, x + 1, craftSectionY + craftSectionHeight, 0xFF000000);
+        graphics.fill(x + 1, craftSectionY, x + 3, craftSectionY + craftSectionHeight, 0xFFFFFFFE);
+        graphics.fill(x + TEX_W - 1, craftSectionY, x + TEX_W,
+                craftSectionY + craftSectionHeight, 0xFF000000);
+        graphics.fill(x + TEX_W - 3, craftSectionY, x + TEX_W - 1,
+                craftSectionY + craftSectionHeight, 0xFF4F4F4F);
 
-        int craftGY = y + menu.craftGridY;
+        int craftingY = y + menu.craftGridY;
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 3; col++) {
-                g.blit(TEXTURE,
-                        x + menu.craftGridX + col * S - 1,
-                        craftGY + row * S - 1,
-                        7, 17, S, S);
+                graphics.blit(TEXTURE, x + menu.craftGridX + col * slotSize - 1,
+                        craftingY + row * slotSize - 1, 7, 17, slotSize, slotSize);
             }
         }
-        g.blit(ARROW_TEXTURE,
-                x + menu.craftGridX + 3 * S + 1,
-                craftGY + S + (S - 15) / 2,
+        graphics.blit(ARROW_TEXTURE, x + menu.craftGridX + 3 * slotSize + 1,
+                craftingY + slotSize + (slotSize - 15) / 2,
                 0, 0, 22, 15, 22, 15);
-        g.blit(TEXTURE, x + menu.craftOutX - 1, y + menu.craftOutY - 1, 7, 17, S, S);
-        g.blit(TEXTURE, x, y + menu.playerY - 15, 0, TEX_PLAYER_V, TEX_W, TEX_PLAYER_H);
-
-        renderScrollbar(g);
-        renderInactiveSlotOverlays(g);
+        graphics.blit(TEXTURE, x + menu.craftOutX - 1, y + menu.craftOutY - 1,
+                7, 17, slotSize, slotSize);
+        graphics.blit(TEXTURE, x, y + menu.playerY - 15, 0, TEX_PLAYER_V, TEX_W, TEX_PLAYER_H);
+        renderScrollbar(graphics);
     }
 
-    private void renderScrollbar(GuiGraphics g) {
-        int sbX = sbScreenX, sbY = sbScreenTopY;
-        g.fill(sbX, sbY, sbX + SB_W, sbY + sbH, C_SB_TRACK);
-        g.fill(sbX, sbY, sbX + SB_W, sbY + SB_BTN, C_SB_BTN);
-        g.drawString(font, "\u25b2", sbX + 2, sbY + 2, 0x333333, false);
-        g.fill(sbX, sbScreenBotY, sbX + SB_W, sbScreenBotY + SB_BTN, C_SB_BTN);
-        g.drawString(font, "\u25bc", sbX + 2, sbScreenBotY + 2, 0x333333, false);
-
-        int maxRows = maxScroll();
-        if (maxRows > 0) {
-            int thumbH = Math.max(10, sbTrackH * visibleRows / (maxRows + visibleRows));
-            int thumbY = (int) ((float) scrollOffset / maxRows * (sbTrackH - thumbH));
-            g.fill(sbX + 1, sbY + SB_BTN + thumbY, sbX + SB_W - 1, sbY + SB_BTN + thumbY + thumbH, C_SB_THUMB);
-        } else {
-            g.fill(sbX + 1, sbY + SB_BTN, sbX + SB_W - 1, sbScreenBotY, C_SB_THUMB);
-        }
+    private void renderSearchBoxBackground(GuiGraphics graphics, int x, int y) {
+        int fillColor = searchBox != null && searchBox.isFocused() ? C_SEARCH_FOCUSED : C_SEARCH_NORMAL;
+        graphics.fill(x, y, x + SEARCH_W, y + SEARCH_H, C_SEARCH_EDGE_DARK);
+        graphics.fill(x + 1, y + 1, x + SEARCH_W - 1, y + SEARCH_H - 1, fillColor);
+        graphics.fill(x + SEARCH_W - 1, y + 1, x + SEARCH_W, y + SEARCH_H, C_SEARCH_EDGE_LIGHT);
+        graphics.fill(x + 1, y + SEARCH_H - 1, x + SEARCH_W, y + SEARCH_H, C_SEARCH_EDGE_LIGHT);
     }
 
-    private void renderInactiveSlotOverlays(GuiGraphics g) {
-        int count = menu.getVisibleSlotCount();
-        for (int i = 0; i < count; i++) {
-            Slot slot = menu.slots.get(i);
-            if (!slot.isActive()) {
-                g.fill(leftPos + slot.x, topPos + slot.y,
-                        leftPos + slot.x + 16, topPos + slot.y + 16, C_INACTIVE);
-            }
-        }
-    }
+    private void renderScrollbar(GuiGraphics graphics) {
+        int maxScroll = maxScroll();
+        if (maxScroll == 0) return;
 
-    @Override
-    public boolean mouseDragged(double mx, double my, int button, double dx, double dy) {
-        if (button == 0) {
-            int ix = (int) mx;
-            if (ix >= sbScreenX && ix < sbScreenX + SB_W) {
-                int trackTop = sbScreenTopY + SB_BTN;
-                int trackH   = sbScreenBotY - trackTop;
-                if (trackH > 0) {
-                    float ratio = (float) ((int) my - trackTop) / trackH;
-                    applyScroll(Math.round(ratio * maxScroll()));
-                    return true;
-                }
-            }
-        }
-        return super.mouseDragged(mx, my, button, dx, dy);
+        int x = scrollbarScreenX;
+        int y = scrollbarScreenTopY;
+        int extensionLeft = leftPos + SB_JOIN_X;
+        int extensionTop = y - SB_EXTENSION_TOP;
+        int extensionRight = leftPos + TEX_W + SB_W + 1;
+        int extensionBottom = y + visibleRows * TEX_ROW_H;
+        graphics.fill(extensionLeft, extensionTop, extensionRight, extensionBottom, C_SB_PANEL);
+        graphics.fill(extensionLeft, extensionTop, extensionRight, extensionTop + 1, C_SB_HIGHLIGHT);
+        graphics.fill(extensionRight - 1, extensionTop + 1, extensionRight, extensionBottom, C_SB_RECESS);
+        graphics.fill(extensionLeft, extensionBottom - 1, extensionRight, extensionBottom, C_SB_RECESS);
+
+        graphics.fill(x, y, x + SB_W, y + scrollbarHeight, C_SB_RECESS);
+        graphics.fill(x + 1, y + 1, x + SB_W - 1, y + scrollbarHeight - 1, C_SB_TRACK);
+
+        int thumbHeight = scrollbarThumbHeight(maxScroll);
+        int thumbY = y + Math.round((float) scrollOffset / maxScroll * (scrollbarHeight - thumbHeight));
+        graphics.fill(x + 1, thumbY, x + SB_W - 1, thumbY + thumbHeight, C_SB_THUMB);
+        graphics.fill(x + 1, thumbY, x + 2, thumbY + thumbHeight, C_SB_HIGHLIGHT);
     }
 
     @Override
-    public boolean mouseScrolled(double mx, double my, double delta) {
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (button == 0 && draggingScrollbar) {
+            scrollFromMouse(mouseY);
+            return true;
+        }
+        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
         applyScroll(scrollOffset + (delta < 0 ? 1 : -1));
         return true;
     }
 
     @Override
-    public boolean mouseClicked(double mx, double my, int button) {
-        if (button == 0) {
-            int ix = (int) mx, iy = (int) my;
-            if (ix >= sbScreenX && ix < sbScreenX + SB_W) {
-                if (iy >= sbScreenTopY && iy < sbScreenTopY + SB_BTN) { applyScroll(scrollOffset - 1); return true; }
-                if (iy >= sbScreenBotY && iy < sbScreenBotY + SB_BTN) { applyScroll(scrollOffset + 1); return true; }
-            }
-            for (IconBtn btn : iconButtons) {
-                if (btn.isHovered(btnScreenX, btnScreenY, ix, iy)) {
-                    btn.action().run();
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 0 && isOverScrollbar(mouseX, mouseY)) {
+            draggingScrollbar = true;
+            scrollFromMouse(mouseY);
+            return true;
+        }
+
+        if (button == 0 || button == 1) {
+            int catalogIndex = catalogIndexAt(mouseX, mouseY);
+            if (catalogIndex >= 0) {
+                ItemStack stack = catalogIndex < menu.getCatalogPage().size() ?
+                        menu.getCatalogPage().get(catalogIndex).stack() : ItemStack.EMPTY;
+                if (!stack.isEmpty() || !menu.getCarried().isEmpty()) {
+                    VaultNetwork.CHANNEL.sendToServer(
+                            new CPacketVaultCatalogClick(stack, button, hasShiftDown()));
                     return true;
                 }
             }
         }
-        return super.mouseClicked(mx, my, button);
+
+        if (button == 0) {
+            int x = (int) mouseX;
+            int y = (int) mouseY;
+            for (IconButton iconButton : iconButtons) {
+                if (iconButton.isHovered(buttonScreenX, buttonScreenY, x, y)) {
+                    iconButton.action().run();
+                    return true;
+                }
+            }
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (button == 0 && draggingScrollbar) {
+            draggingScrollbar = false;
+            return true;
+        }
+        return super.mouseReleased(mouseX, mouseY, button);
+    }
+
+    private boolean isOverScrollbar(double mouseX, double mouseY) {
+        return maxScroll() > 0 &&
+                mouseX >= scrollbarScreenX && mouseX < scrollbarScreenX + SB_W &&
+                mouseY >= scrollbarScreenTopY && mouseY < scrollbarScreenTopY + scrollbarHeight;
+    }
+
+    private void scrollFromMouse(double mouseY) {
+        int maxScroll = maxScroll();
+        if (maxScroll == 0) return;
+        int thumbHeight = scrollbarThumbHeight(maxScroll);
+        int travel = scrollbarHeight - thumbHeight;
+        double ratio = (mouseY - scrollbarScreenTopY - thumbHeight / 2.0) / travel;
+        applyScroll((int) Math.round(ratio * maxScroll));
+    }
+
+    private int scrollbarThumbHeight(int maxScroll) {
+        return Math.max(12, scrollbarHeight * visibleRows / (maxScroll + visibleRows));
+    }
+
+    private int catalogIndexAt(double mouseX, double mouseY) {
+        int relativeX = (int) mouseX - leftPos - AbstractVaultMenu.SLOTS_X;
+        int relativeY = (int) mouseY - topPos - AbstractVaultMenu.SLOTS_Y;
+        if (relativeX < 0 || relativeY < 0 ||
+                relativeX >= AbstractVaultMenu.COLS * TEX_ROW_H || relativeY >= visibleRows * TEX_ROW_H) {
+            return -1;
+        }
+        return relativeY / TEX_ROW_H * AbstractVaultMenu.COLS + relativeX / TEX_ROW_H;
     }
 
     @Override
     public void onClose() {
-        VaultScreenState.save(
-                menu.getDisplayMode(),
-                currentSortMode,
-                currentSortReversed,
+        VaultScreenState.save(currentSortMode, currentSortReversed,
                 searchBox != null ? searchBox.getValue() : "");
         super.onClose();
     }
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == 256) { this.onClose(); return true; }
+        if (keyCode == 256) {
+            onClose();
+            return true;
+        }
         if (searchBox.isFocused()) return searchBox.keyPressed(keyCode, scanCode, modifiers);
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     @Override
-    public boolean charTyped(char c, int modifiers) {
-        if (searchBox.isFocused()) return searchBox.charTyped(c, modifiers);
-        return super.charTyped(c, modifiers);
+    public boolean charTyped(char character, int modifiers) {
+        if (searchBox.isFocused()) return searchBox.charTyped(character, modifiers);
+        return super.charTyped(character, modifiers);
     }
 }

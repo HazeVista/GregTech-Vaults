@@ -1,5 +1,7 @@
 package com.astrogreg.gregvaults.items;
 
+import com.gregtechceu.gtceu.common.machine.owner.MachineOwner;
+
 import net.minecraft.ChatFormatting;
 import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
@@ -15,6 +17,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -85,8 +88,7 @@ public class WirelessTerminalItem extends Item {
         public double getMultiplier() {
             VaultConfig.WirelessTerminal cfg = VaultConfig.INSTANCE.wirelessTerminal;
             return switch (this) {
-                case NONE -> 1.0;
-                case LV -> cfg.lvEmitterBonus;
+                case NONE, LV -> 1.0;
                 case MV -> cfg.mvEmitterBonus;
                 case HV -> cfg.hvEmitterBonus;
                 case EV -> cfg.evEmitterBonus;
@@ -114,7 +116,7 @@ public class WirelessTerminalItem extends Item {
 
     public static EmitterTier getEmitterTier(ItemStack stack) {
         CompoundTag tag = stack.getTag();
-        if (tag == null || !tag.contains(TAG_EMITTER_TIER)) return EmitterTier.NONE;
+        if (tag == null || !tag.contains(TAG_EMITTER_TIER)) return EmitterTier.LV;
         return EmitterTier.fromLevel(tag.getInt(TAG_EMITTER_TIER));
     }
 
@@ -202,6 +204,8 @@ public class WirelessTerminalItem extends Item {
             return InteractionResult.FAIL;
         }
 
+        if (!MachineOwner.canOpenOwnerMachine(serverPlayer, vault)) return InteractionResult.FAIL;
+
         if (!vault.getVaultTier().wirelessAllowed()) {
             serverPlayer.sendSystemMessage(WIRELESS_DISABLED_MESSAGE);
             return InteractionResult.FAIL;
@@ -216,8 +220,10 @@ public class WirelessTerminalItem extends Item {
 
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
-        ItemStack stack = player.getItemInHand(hand);
+        return open(level, player, player.getItemInHand(hand));
+    }
 
+    public InteractionResultHolder<ItemStack> open(Level level, Player player, ItemStack stack) {
         if (level.isClientSide) return InteractionResultHolder.success(stack);
         if (!(player instanceof ServerPlayer serverPlayer)) return InteractionResultHolder.pass(stack);
 
@@ -270,27 +276,41 @@ public class WirelessTerminalItem extends Item {
             return InteractionResultHolder.fail(stack);
         }
 
+        if (!MachineOwner.canOpenOwnerMachine(serverPlayer, vault)) {
+            return InteractionResultHolder.fail(stack);
+        }
+
         if (!vault.getVaultTier().wirelessAllowed()) {
             serverPlayer.sendSystemMessage(WIRELESS_DISABLED_MESSAGE);
             return InteractionResultHolder.fail(stack);
         }
 
+        vault.recoverLegacyCraftingItems();
+        int terminalSlot = findInventorySlot(player.getInventory(), stack);
         final int[] windowIdHolder = { -1 };
         MenuProvider provider = new SimpleMenuProvider(
                 (windowId, playerInv, p) -> {
                     windowIdHolder[0] = windowId;
-                    VaultTerminalMenu menu = new VaultTerminalMenu(windowId, playerInv, vault.getItemHandler(), vault);
-                    menu.initCraftingGrid(vault.getSavedCraftingGrid());
-                    menu.setOnGridClose(vault::setSavedCraftingGrid);
-                    return menu;
+                    return new VaultTerminalMenu(windowId, playerInv, vault.getItemHandler(), vault, linkedPos,
+                            terminalSlot);
                 },
                 Component.translatable(KEY_VAULT_TERMINAL_TITLE));
-        NetworkHooks.openScreen(serverPlayer, provider, buf -> buf.writeInt(vault.getTotalSlots()));
+        NetworkHooks.openScreen(serverPlayer, provider, buf -> {
+            buf.writeInt(vault.getTotalSlots());
+            buf.writeInt(terminalSlot);
+        });
         if (windowIdHolder[0] >= 0) {
             vault.sendFullContents(serverPlayer, windowIdHolder[0]);
         }
 
         return InteractionResultHolder.consume(stack);
+    }
+
+    private static int findInventorySlot(Inventory inventory, ItemStack target) {
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            if (inventory.getItem(slot) == target) return slot;
+        }
+        return -1;
     }
 
     @Override

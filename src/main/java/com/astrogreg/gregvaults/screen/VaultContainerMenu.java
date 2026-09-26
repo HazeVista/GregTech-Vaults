@@ -1,10 +1,11 @@
 package com.astrogreg.gregvaults.screen;
 
+import com.gregtechceu.gtceu.common.machine.owner.MachineOwner;
+
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.MenuType;
-import net.minecraft.world.inventory.Slot;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemStackHandler;
 
@@ -15,41 +16,27 @@ import com.astrogreg.gregvaults.registry.VaultRegistry;
 public class VaultContainerMenu extends AbstractVaultMenu {
 
     public VaultContainerMenu(int windowId, Inventory playerInv, IItemHandler vaultHandler) {
-        this(VaultRegistry.VAULT_MENU.get(), windowId, playerInv, vaultHandler, null);
+        this(VaultRegistry.VAULT_MENU.get(), windowId, playerInv, vaultHandler, null, vaultHandler.getSlots());
     }
 
     public VaultContainerMenu(int windowId, Inventory playerInv, IItemHandler vaultHandler, VaultMachine machine) {
-        this(VaultRegistry.VAULT_MENU.get(), windowId, playerInv, vaultHandler, machine);
+        this(VaultRegistry.VAULT_MENU.get(), windowId, playerInv, vaultHandler, machine, vaultHandler.getSlots());
     }
 
     protected VaultContainerMenu(MenuType<?> menuType, int windowId, Inventory playerInv,
-                                 IItemHandler vaultHandler, VaultMachine machine) {
-        super(menuType, windowId, playerInv, vaultHandler, machine);
+                                 IItemHandler vaultHandler, VaultMachine machine, int totalSlots) {
+        super(menuType, windowId, playerInv, vaultHandler, machine, totalSlots, -1);
     }
 
     public VaultContainerMenu(int windowId, Inventory playerInv, FriendlyByteBuf buf) {
-        this(windowId, playerInv, new ItemStackHandler(buf.readInt()));
-    }
-
-    @Override
-    protected void addPlayerSlots(Inventory playerInv) {
-        for (int row = 0; row < 3; row++) {
-            for (int col = 0; col < 9; col++) {
-                addSlot(new Slot(playerInv, col + row * 9 + 9,
-                        SLOTS_X + col * SLOT_SIZE,
-                        playerY + row * SLOT_SIZE));
-            }
-        }
-        for (int col = 0; col < 9; col++) {
-            addSlot(new Slot(playerInv, col,
-                    SLOTS_X + col * SLOT_SIZE,
-                    hotbarY));
-        }
+        this(VaultRegistry.VAULT_MENU.get(), windowId, playerInv, new ItemStackHandler(0), null,
+                Math.max(0, buf.readInt()));
     }
 
     @Override
     public boolean stillValid(Player player) {
         if (machine == null) return true;
-        return machine.isFormed() && player.distanceToSqr(machine.getPos().getCenter()) <= 64.0;
+        return machine.isFormed() && MachineOwner.canOpenOwnerMachine(player, machine) &&
+                player.distanceToSqr(machine.getPos().getCenter()) <= 64.0;
     }
 }

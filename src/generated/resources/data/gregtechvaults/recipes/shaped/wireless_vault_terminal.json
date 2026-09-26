@@ -27,6 +27,9 @@
     "EdE"
   ],
   "result": {
-    "item": "gregtechvaults:wireless_vault_terminal"
+    "item": "gregtechvaults:wireless_vault_terminal",
+    "nbt": {
+      "emitterTier": 1
+    }
   }
 }

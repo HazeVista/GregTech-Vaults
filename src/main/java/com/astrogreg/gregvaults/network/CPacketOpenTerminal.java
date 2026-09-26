@@ -2,7 +2,6 @@ package com.astrogreg.gregvaults.network;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
 
@@ -43,10 +42,9 @@ public class CPacketOpenTerminal {
                 return;
             }
 
-            if (!(stack.getItem() instanceof WirelessTerminalItem)) return;
-
-            InteractionHand hand = packet.offhand ? InteractionHand.OFF_HAND : InteractionHand.MAIN_HAND;
-            stack.getItem().use(player.level(), player, hand);
+            if (stack.getItem() instanceof WirelessTerminalItem terminal) {
+                terminal.open(player.level(), player, stack);
+            }
         });
         ctx.get().setPacketHandled(true);
     }

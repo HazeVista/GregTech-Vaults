@@ -11,7 +11,6 @@ import com.gregtechceu.gtceu.api.sound.SoundEntry;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.common.Mod;
@@ -33,7 +32,7 @@ public class GregTechVaults {
 
     public static final String MOD_ID = "gregtechvaults";
     public static final Logger LOGGER = LogManager.getLogger();
-    public static GTRegistrate REGISTRATE = GTRegistrate.create(GregTechVaults.MOD_ID);
+    public static final GTRegistrate REGISTRATE = GTRegistrate.create(GregTechVaults.MOD_ID);
 
     public GregTechVaults() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
@@ -50,10 +49,8 @@ public class GregTechVaults {
         modEventBus.addListener(this::addMaterials);
         modEventBus.addListener(this::modifyMaterials);
 
-        VaultRegistry.registerEventBus(modEventBus);
-        VaultRecipes.SERIALIZERS.register(modEventBus);
-
-        MinecraftForge.EVENT_BUS.register(this);
+        VaultRegistry.init();
+        VaultRecipes.init();
 
         REGISTRATE.registerRegistrate();
 

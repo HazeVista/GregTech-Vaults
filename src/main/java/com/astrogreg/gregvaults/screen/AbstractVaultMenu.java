@@ -1,5 +1,10 @@
 package com.astrogreg.gregvaults.screen;
 
+import com.gregtechceu.gtceu.api.item.IGTTool;
+import com.gregtechceu.gtceu.api.item.tool.ToolHelper;
+
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -15,30 +20,27 @@ import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemStackHandler;
-import net.minecraftforge.items.SlotItemHandler;
+import net.minecraftforge.network.PacketDistributor;
 
 import com.astrogreg.gregvaults.multiblock.VaultMachine;
-import com.astrogreg.gregvaults.screen.VaultSlot.RemappingHandler;
-import com.gregtechceu.gtceu.api.item.IGTTool;
-import com.gregtechceu.gtceu.api.item.tool.ToolHelper;
-
+import com.astrogreg.gregvaults.network.SPacketVaultCatalog;
+import com.astrogreg.gregvaults.network.VaultNetwork;
+import com.astrogreg.gregvaults.storage.VaultStorage;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
+import java.util.Locale;
+import java.util.Objects;
 
-@SuppressWarnings("all")
 public abstract class AbstractVaultMenu extends AbstractContainerMenu {
 
-    public static final int COLS      = 9;
+    public static final int COLS = 9;
     public static final int SLOT_SIZE = 18;
-    public static final int MAX_ROWS  = 6;
-    public static final int SLOTS_X   = 8;
-    public static final int SLOTS_Y   = 18;
+    public static final int MAX_ROWS = 6;
+    public static final int SLOTS_X = 8;
+    public static final int SLOTS_Y = 18;
 
     public final IItemHandler vaultHandler;
     public final int totalSlots;
@@ -55,61 +57,48 @@ public abstract class AbstractVaultMenu extends AbstractContainerMenu {
     public final int playerY;
     public final int hotbarY;
 
-    private final RemappingHandler remapping;
-
     public final CraftingContainer craftingGrid = new TransientCraftingContainer(this, 3, 3);
-    public final ResultContainer   craftingResult = new ResultContainer();
+    public final ResultContainer craftingResult = new ResultContainer();
 
     public final int playerSlotsStart;
     public final int craftingSlotsStart;
     public final int craftingOutputStart;
-    public final List<Slot> vaultInputSlots;
 
-    private int[]        filteredIndices  = null;
-    private VaultSortMode sortMode        = VaultSortMode.NAME;
-    private boolean      sortReversed     = true;
-    private String       lastSearchQuery  = "";
-    private VaultDisplayMode displayMode    = VaultDisplayMode.SLOTS;
-    private List<AggregatedStack> aggregatedView = null;
-    public  ItemStack[]  clientCache        = null;
-    public  int          clientCacheVersion = 0;
-
-    private boolean refilling  = false;
-    private boolean skipRefill = false;
-    private boolean suppressCraftingResultUpdates = false;
-
-    private Consumer<ItemStack[]> onGridClose = null;
-
+    private final Inventory playerInventory;
     private final ItemStack[] lastGridIngredients = new ItemStack[9];
 
-    protected AbstractVaultMenu(MenuType<?> menuType, int windowId, Inventory playerInv,
-                                IItemHandler vaultHandler, @Nullable VaultMachine machine) {
-        super(menuType, windowId);
-        this.vaultHandler = vaultHandler;
-        this.machine      = machine;
-        this.totalSlots   = vaultHandler.getSlots();
+    private List<VaultCatalogEntry> catalogPage = List.of();
+    private int catalogTotal;
+    private int scrollRow;
+    private String searchQuery = "";
+    private VaultSortMode sortMode = VaultSortMode.NAME;
+    private boolean sortReversed;
 
-        int usedRows    = Math.max(1, (int) Math.ceil(totalSlots / (double) COLS));
+    private boolean suppressCraftingResultUpdates;
+    private int lastGridHash;
+
+    protected AbstractVaultMenu(MenuType<?> menuType, int windowId, Inventory playerInventory,
+                                IItemHandler vaultHandler, @Nullable VaultMachine machine, int totalSlots,
+                                int lockedPlayerSlot) {
+        super(menuType, windowId);
+        this.playerInventory = playerInventory;
+        this.vaultHandler = vaultHandler;
+        this.machine = machine;
+        this.totalSlots = Math.max(0, totalSlots);
+
+        int usedRows = Math.max(1, (int) Math.ceil(this.totalSlots / (double) COLS));
         this.visibleRows = Math.min(usedRows, MAX_ROWS);
-        int visibleSlots = visibleRows * COLS;
 
         this.craftSectionY = SLOTS_Y + visibleRows * SLOT_SIZE - 1;
-        this.craftGridY    = craftSectionY + SLOT_SIZE;
-        this.craftGridX    = SLOTS_X;
-        this.craftOutX     = craftGridX + 3 * SLOT_SIZE + 27;
-        this.craftOutY     = craftGridY + SLOT_SIZE;
-        this.playerY       = craftGridY + 3 * SLOT_SIZE + 14;
-        this.hotbarY       = playerY + 3 * SLOT_SIZE + 4;
-
-        this.remapping = new RemappingHandler(vaultHandler, visibleSlots);
-        for (int i = 0; i < visibleSlots; i++) {
-            addSlot(new VaultSlot(remapping, i,
-                    SLOTS_X + (i % COLS) * SLOT_SIZE,
-                    SLOTS_Y + (i / COLS) * SLOT_SIZE));
-        }
+        this.craftGridY = craftSectionY + SLOT_SIZE;
+        this.craftGridX = SLOTS_X;
+        this.craftOutX = craftGridX + 3 * SLOT_SIZE + 27;
+        this.craftOutY = craftGridY + SLOT_SIZE;
+        this.playerY = craftGridY + 3 * SLOT_SIZE + 14;
+        this.hotbarY = playerY + 3 * SLOT_SIZE + 4;
 
         this.playerSlotsStart = slots.size();
-        addPlayerSlots(playerInv);
+        addPlayerSlots(playerInventory, lockedPlayerSlot);
 
         this.craftingSlotsStart = slots.size();
         for (int row = 0; row < 3; row++) {
@@ -121,95 +110,188 @@ public abstract class AbstractVaultMenu extends AbstractContainerMenu {
         }
 
         this.craftingOutputStart = slots.size();
-        addSlot(new VaultCraftingResultSlot(playerInv.player, craftingGrid, craftingResult, 0,
+        addSlot(new VaultCraftingResultSlot(playerInventory.player, craftingGrid, craftingResult, 0,
                 craftOutX, craftOutY));
-
-        List<Slot> vaultSlots = new ArrayList<>(vaultHandler.getSlots());
-        for (int i = 0; i < vaultHandler.getSlots(); i++) {
-            vaultSlots.add(new CacheAwareVaultSlot(i, -10000, -10000));
-        }
-        this.vaultInputSlots = java.util.Collections.unmodifiableList(vaultSlots);
-
         updateCraftingResult();
     }
 
-    private class CacheAwareVaultSlot extends SlotItemHandler {
-
-        private final int vaultSlotIndex;
-
-        CacheAwareVaultSlot(int vaultSlotIndex, int x, int y) {
-            super(vaultHandler, vaultSlotIndex, x, y);
-            this.vaultSlotIndex = vaultSlotIndex;
-        }
-
-        @Override
-        public ItemStack getItem() {
-            if (clientCache != null && vaultSlotIndex < clientCache.length) {
-                ItemStack cached = clientCache[vaultSlotIndex];
-                return cached != null ? cached : ItemStack.EMPTY;
-            }
-            return super.getItem();
-        }
-
-        @Override
-        public boolean hasItem() {
-            return !getItem().isEmpty();
-        }
-    }
-
-    protected abstract void addPlayerSlots(Inventory playerInv);
-
-    private class VaultCraftingResultSlot extends ResultSlot {
-
-        VaultCraftingResultSlot(Player player, CraftingContainer grid, ResultContainer result,
-                                int slot, int x, int y) {
-            super(player, grid, result, slot, x, y);
-        }
-
-        @Override
-        public void onTake(Player player, ItemStack stack) {
-            snapshotGridIngredients();
-            super.onTake(player, stack);
-
-            applyCraftingToolDamageToGrid(player);
-
-            if (!skipRefill) {
-                if (machine != null) machine.beginBatch(VaultMachine.BatchSyncMode.DELTA_ONLY);
-                try {
-                    refillGridFromVaultVoid(buildVaultSlotMap());
-                } finally {
-                    if (machine != null) machine.endBatch();
-                }
+    private void addPlayerSlots(Inventory playerInventory, int lockedPlayerSlot) {
+        for (int row = 0; row < 3; row++) {
+            for (int col = 0; col < 9; col++) {
+                int inventorySlot = col + row * 9 + 9;
+                addSlot(createPlayerSlot(playerInventory, inventorySlot,
+                        SLOTS_X + col * SLOT_SIZE, playerY + row * SLOT_SIZE, lockedPlayerSlot));
             }
         }
-    }
-
-    public void setClientCache(ItemStack[] cache) {
-        this.clientCache = cache;
-        this.clientCacheVersion++;
-        remapping.setClientCache(cache);
-        if (displayMode == VaultDisplayMode.STACKED) {
-            rebuildAggregatedView();
-            updateScroll(0);
-        }
-        refreshVisibleSlots();
-    }
-
-    public void updateClientCacheSlot(int slot, ItemStack stack) {
-        if (clientCache != null && slot >= 0 && slot < clientCache.length) {
-            clientCache[slot] = stack;
-            this.clientCacheVersion++;
-            remapping.setClientCache(clientCache);
-            if (displayMode == VaultDisplayMode.STACKED) rebuildAggregatedView();
-            refreshVisibleSlots();
+        for (int col = 0; col < 9; col++) {
+            addSlot(createPlayerSlot(playerInventory, col,
+                    SLOTS_X + col * SLOT_SIZE, hotbarY, lockedPlayerSlot));
         }
     }
 
-    public void applyDeltaUpdate() {
-        this.clientCacheVersion++;
-        remapping.setClientCache(clientCache);
-        if (displayMode == VaultDisplayMode.STACKED) rebuildAggregatedView();
-        refreshVisibleSlots();
+    private static Slot createPlayerSlot(Inventory inventory, int slot, int x, int y, int lockedPlayerSlot) {
+        return slot == lockedPlayerSlot ? new LockedSlot(inventory, slot, x, y) : new Slot(inventory, slot, x, y);
+    }
+
+    public List<VaultCatalogEntry> getCatalogPage() {
+        return catalogPage;
+    }
+
+    public int getCatalogTotal() {
+        return catalogTotal;
+    }
+
+    public int getScrollRow() {
+        return scrollRow;
+    }
+
+    public int getPageSize() {
+        return visibleRows * COLS;
+    }
+
+    public int getTotalCatalogRows() {
+        return (int) Math.ceil(catalogTotal / (double) COLS);
+    }
+
+    public void applyCatalogPage(int scrollRow, int totalEntries, List<VaultCatalogEntry> entries) {
+        this.scrollRow = scrollRow;
+        this.catalogTotal = totalEntries;
+        this.catalogPage = List.copyOf(entries);
+    }
+
+    public void setSearch(String query, ServerPlayer player) {
+        this.searchQuery = query == null ? "" : query.strip();
+        this.scrollRow = 0;
+        sendCatalogPage(player);
+    }
+
+    public void setSort(VaultSortMode mode, boolean reversed, ServerPlayer player) {
+        this.sortMode = Objects.requireNonNull(mode);
+        this.sortReversed = reversed;
+        this.scrollRow = 0;
+        sendCatalogPage(player);
+    }
+
+    public void setScrollRow(int row, ServerPlayer player) {
+        this.scrollRow = Math.max(0, row);
+        sendCatalogPage(player);
+    }
+
+    public void sendCatalogPage(ServerPlayer player) {
+        if (!(vaultHandler instanceof VaultStorage storage)) return;
+
+        List<VaultCatalogEntry> entries = new ArrayList<>();
+        String normalizedQuery = searchQuery.toLowerCase(Locale.ROOT);
+        for (VaultStorage.Entry entry : storage.getEntries()) {
+            ItemStack stack = entry.displayStack();
+            if (!normalizedQuery.isEmpty() &&
+                    !stack.getHoverName().getString().toLowerCase(Locale.ROOT).contains(normalizedQuery)) {
+                continue;
+            }
+            entries.add(new VaultCatalogEntry(stack, entry.count()));
+        }
+
+        Comparator<VaultCatalogEntry> byName = Comparator
+                .comparing((VaultCatalogEntry entry) -> entry.stack().getHoverName().getString(),
+                        String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(entry -> BuiltInRegistries.ITEM.getKey(entry.stack().getItem()).toString())
+                .thenComparing(entry -> Objects.toString(entry.stack().getTag(), ""));
+        Comparator<VaultCatalogEntry> comparator = sortMode == VaultSortMode.COUNT ?
+                Comparator.comparingLong(VaultCatalogEntry::count).thenComparing(byName) : byName;
+        if (sortReversed) comparator = comparator.reversed();
+        entries.sort(comparator);
+
+        int totalRows = (int) Math.ceil(entries.size() / (double) COLS);
+        int maxScroll = Math.max(0, totalRows - visibleRows);
+        scrollRow = Math.min(scrollRow, maxScroll);
+        int from = Math.min(scrollRow * COLS, entries.size());
+        int to = Math.min(from + getPageSize(), entries.size());
+        List<VaultCatalogEntry> page = entries.subList(from, to);
+
+        VaultNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
+                new SPacketVaultCatalog(containerId, scrollRow, entries.size(), page));
+    }
+
+    public void handleCatalogClick(ServerPlayer player, ItemStack requested, int button, boolean shiftDown) {
+        if (!(vaultHandler instanceof VaultStorage storage)) return;
+        if (button < 0 || button > 1) return;
+
+        VaultStorage.StackKey key = requested.isEmpty() ? null : VaultStorage.StackKey.of(requested);
+        if (key != null && storage.getCount(key) <= 0) return;
+
+        if (machine != null) machine.beginBatch();
+        try {
+            ItemStack carried = getCarried();
+            if (shiftDown && key != null) {
+                moveCatalogStackToInventory(player, storage, key);
+            } else if (!carried.isEmpty() && (key == null || !key.matches(carried))) {
+                insertCarried(storage, carried, button == 1 ? 1 : carried.getCount());
+            } else if (key != null) {
+                extractToCursor(storage, key, button == 1);
+            } else if (!carried.isEmpty()) {
+                insertCarried(storage, carried, button == 1 ? 1 : carried.getCount());
+            }
+        } finally {
+            if (machine != null) machine.endBatch();
+        }
+        broadcastChanges();
+    }
+
+    private void moveCatalogStackToInventory(ServerPlayer player, VaultStorage storage, VaultStorage.StackKey key) {
+        ItemStack template = key.createStack();
+        int capacity = computePlayerCapacity(template);
+        int amount = Math.min(capacity, template.getMaxStackSize());
+        ItemStack extracted = storage.extract(key, amount, false);
+        if (extracted.isEmpty()) return;
+
+        player.getInventory().add(extracted);
+        if (!extracted.isEmpty()) storage.insert(extracted, false);
+    }
+
+    private void extractToCursor(VaultStorage storage, VaultStorage.StackKey key, boolean single) {
+        ItemStack carried = getCarried();
+        ItemStack template = key.createStack();
+        int capacity = carried.isEmpty() ? template.getMaxStackSize() : carried.getMaxStackSize() - carried.getCount();
+        if (capacity <= 0) return;
+
+        int amount;
+        if (single && carried.isEmpty()) {
+            amount = (int) Math.min((storage.getCount(key) + 1) / 2, capacity);
+        } else {
+            amount = single ? 1 : capacity;
+        }
+
+        ItemStack extracted = storage.extract(key, amount, false);
+        if (extracted.isEmpty()) return;
+        if (carried.isEmpty()) {
+            setCarried(extracted);
+        } else {
+            carried.grow(extracted.getCount());
+            setCarried(carried);
+        }
+    }
+
+    private void insertCarried(VaultStorage storage, ItemStack carried, int amount) {
+        ItemStack offered = carried.copyWithCount(Math.min(amount, carried.getCount()));
+        ItemStack remainder = storage.insert(offered, false);
+        int inserted = offered.getCount() - remainder.getCount();
+        if (inserted <= 0) return;
+        carried.shrink(inserted);
+        setCarried(carried.isEmpty() ? ItemStack.EMPTY : carried);
+    }
+
+    private int computePlayerCapacity(ItemStack template) {
+        int capacity = 0;
+        for (int index = playerSlotsStart; index < craftingSlotsStart; index++) {
+            Slot slot = slots.get(index);
+            ItemStack stack = slot.getItem();
+            if (stack.isEmpty()) {
+                capacity += Math.min(slot.getMaxStackSize(), template.getMaxStackSize());
+            } else if (ItemStack.isSameItemSameTags(stack, template)) {
+                capacity += Math.min(slot.getMaxStackSize(), stack.getMaxStackSize()) - stack.getCount();
+            }
+        }
+        return capacity;
     }
 
     public void refreshCraftingResult() {
@@ -228,547 +310,222 @@ public abstract class AbstractVaultMenu extends AbstractContainerMenu {
         broadcastChanges();
     }
 
-    public void refreshVisibleSlots() {
-        int visibleCount = getVisibleSlotCount();
-        for (int i = 0; i < visibleCount; i++) {
-            Slot slot = slots.get(i);
-            if (slot instanceof VaultSlot) slot.set(remapping.getStackInSlot(i));
-        }
-    }
-
-    public void updateScroll(int scrollRow) {
-        remapping.setOffset(scrollRow * COLS);
-        refreshVisibleSlots();
-    }
-
-    private ItemStack getSearchStack(int i) {
-        if (clientCache != null && i >= 0 && i < clientCache.length) {
-            return clientCache[i] == null ? ItemStack.EMPTY : clientCache[i];
-        }
-        return vaultHandler.getStackInSlot(i);
-    }
-
-    public void updateSearch(String query) {
-        this.lastSearchQuery = query == null ? "" : query;
-        int size = clientCache != null ? clientCache.length : vaultHandler.getSlots();
-        if (query == null || query.isEmpty()) {
-            filteredIndices = null;
-            remapping.setFilteredIndices(null);
-        } else {
-            String q = query.toLowerCase();
-            ArrayList<Integer> matching = new ArrayList<>();
-            for (int i = 0; i < size; i++) {
-                ItemStack stack = getSearchStack(i);
-                if (!stack.isEmpty() && stack.getHoverName().getString().toLowerCase().contains(q))
-                    matching.add(i);
-            }
-            filteredIndices = matching.stream().mapToInt(Integer::intValue).toArray();
-            remapping.setFilteredIndices(filteredIndices);
-        }
-    }
-
-    public int[] getFilteredIndices() { return filteredIndices; }
-
-    public VaultDisplayMode getDisplayMode() { return displayMode; }
-
-    public void setDisplayMode(VaultDisplayMode mode) {
-        this.displayMode = mode;
-        remapping.setOffset(0);
-        if (mode == VaultDisplayMode.STACKED) {
-            rebuildAggregatedView();
-        } else {
-            aggregatedView = null;
-            remapping.setAggregatedView(null);
-        }
-        refreshVisibleSlots();
-    }
-
-    private void rebuildAggregatedView() {
-        int size = clientCache != null ? clientCache.length : vaultHandler.getSlots();
-        java.util.LinkedHashMap<String, AggregatedStack> byKey = new java.util.LinkedHashMap<>();
-
-        for (int i = 0; i < size; i++) {
-            ItemStack stack = clientCache != null && clientCache[i] != null
-                    ? clientCache[i]
-                    : vaultHandler.getStackInSlot(i);
-            if (stack.isEmpty()) continue;
-            final int slot = i;
-            final long count = stack.getCount();
-            String key = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString()
-                    + (stack.hasTag() ? Integer.toHexString(stack.getTag().hashCode()) : "");
-            byKey.compute(key, (k, existing) -> {
-                if (existing == null) {
-                    List<Integer> slots = new ArrayList<>();
-                    slots.add(slot);
-                    return new AggregatedStack(stack.copy(), slots);
-                }
-                existing.backingSlots.add(slot);
-                existing.addCount(count);
-                return existing;
-            });
-        }
-
-        aggregatedView = new ArrayList<>(byKey.values());
-        remapping.setAggregatedView(aggregatedView);
-    }
-
-
-    public int getVisibleSlotCount() { return visibleRows * COLS; }
-
-    public int getTotalFilteredRows() {
-        if (displayMode == VaultDisplayMode.STACKED && aggregatedView != null)
-            return (int) Math.ceil(aggregatedView.size() / (double) COLS);
-        int count = filteredIndices != null ? filteredIndices.length : totalSlots;
-        return (int) Math.ceil(count / (double) COLS);
-    }
-
-    public VaultSortMode getSortMode()    { return sortMode; }
-    public boolean isSortReversed()       { return sortReversed; }
-
-    public void setSortMode(VaultSortMode mode) { this.sortMode = mode; }
-    public void setSortReversed(boolean reversed) { this.sortReversed = reversed; }
-
-    public void setSort(VaultSortMode mode, boolean reversed) {
-        this.sortMode     = mode;
-        this.sortReversed = reversed;
-        applySortToStorage();
-        if (displayMode == VaultDisplayMode.STACKED) rebuildAggregatedView();
-        refreshVisibleSlots();
-    }
-
-    private void applySortToStorage() {
-        if (!(vaultHandler instanceof ItemStackHandler handler)) return;
-        if (machine != null) machine.beginBatch(VaultMachine.BatchSyncMode.FULL_SNAPSHOT);
-        VaultMenuUtils.applySortToStorage(handler, sortMode, sortReversed, remapping);
-        if (machine != null) machine.endBatch();
-    }
-
-    public void organize() {
-        if (!(vaultHandler instanceof ItemStackHandler handler)) return;
-        if (machine != null) machine.beginBatch(VaultMachine.BatchSyncMode.FULL_SNAPSHOT);
-        VaultMenuUtils.organize(handler, remapping);
-        if (machine != null) machine.endBatch();
-    }
-
-    public void setOnGridClose(Consumer<ItemStack[]> callback) {
-        this.onGridClose = callback;
-    }
-
-    public void initCraftingGrid(ItemStack[] saved) {
-        if (saved == null) return;
-        for (int i = 0; i < Math.min(saved.length, craftingGrid.getContainerSize()); i++) {
-            craftingGrid.setItem(i, saved[i] == null ? ItemStack.EMPTY : saved[i].copy());
-        }
-        updateCraftingResult();
-    }
-
-    private int lastGridHash = 0;
-
     @Override
     public void slotsChanged(Container container) {
-        if (container == craftingGrid) {
-            if (suppressCraftingResultUpdates) return;
-            int hash = gridHash();
-            if (hash != lastGridHash) {
-                lastGridHash = hash;
-                updateCraftingResult();
-            }
+        if (container != craftingGrid || suppressCraftingResultUpdates) return;
+        int hash = gridHash();
+        if (hash != lastGridHash) {
+            lastGridHash = hash;
+            updateCraftingResult();
         }
     }
 
     private int gridHash() {
-        int h = 1;
-        for (int i = 0; i < craftingGrid.getContainerSize(); i++) {
-            ItemStack s = craftingGrid.getItem(i);
-            h = 31 * h + (s.isEmpty() ? 0 : (net.minecraft.core.registries.BuiltInRegistries.ITEM.getId(s.getItem()) * 31 + s.getCount()));
+        int hash = 1;
+        for (int slot = 0; slot < craftingGrid.getContainerSize(); slot++) {
+            ItemStack stack = craftingGrid.getItem(slot);
+            hash = 31 * hash + (stack.isEmpty() ? 0 : BuiltInRegistries.ITEM.getId(stack.getItem()));
+            hash = 31 * hash + stack.getCount();
+            hash = 31 * hash + stack.getDamageValue();
+            hash = 31 * hash + Objects.hashCode(stack.getTag());
         }
-        return h;
+        return hash;
     }
 
     private void updateCraftingResult() {
-        Level level = getLevel();
-        if (level == null) return;
+        Level level = playerInventory.player.level();
         var recipe = level.getRecipeManager()
                 .getRecipeFor(RecipeType.CRAFTING, craftingGrid, level)
                 .orElse(null);
+        craftingResult.setRecipeUsed(recipe);
         craftingResult.setItem(0,
                 recipe == null ? ItemStack.EMPTY : recipe.assemble(craftingGrid, level.registryAccess()));
     }
 
-    public void snapshotGridIngredients() {
-        for (int i = 0; i < craftingGrid.getContainerSize(); i++) {
-            ItemStack s = craftingGrid.getItem(i);
-            lastGridIngredients[i] = s.isEmpty() ? ItemStack.EMPTY : s.copy();
+    private void snapshotGridIngredients() {
+        for (int slot = 0; slot < craftingGrid.getContainerSize(); slot++) {
+            ItemStack stack = craftingGrid.getItem(slot);
+            lastGridIngredients[slot] = stack.isEmpty() ? ItemStack.EMPTY : stack.copy();
         }
     }
 
-    private void applyCraftingToolDamageToGrid(Player player) {
-        if (player.level().isClientSide) return;
+    private void refillGridFromVault() {
+        for (int slot = 0; slot < craftingGrid.getContainerSize(); slot++) {
+            ItemStack needed = lastGridIngredients[slot];
+            if (needed == null || needed.isEmpty() || !craftingGrid.getItem(slot).isEmpty()) continue;
 
-        for (int i = 0; i < craftingGrid.getContainerSize(); i++) {
-            ItemStack before = lastGridIngredients[i];
-            if (!isCraftingToolLike(before)) continue;
-
-            ItemStack after = craftingGrid.getItem(i);
-
-            if (after.isEmpty()) {
-                ItemStack damaged = before.copy();
-                damaged.setCount(1);
-                damageCraftingTool(damaged, player);
-                if (!damaged.isEmpty()) {
-                    craftingGrid.setItem(i, damaged);
-                }
+            if (vaultHandler instanceof VaultStorage storage) {
+                ItemStack extracted = storage.extract(VaultStorage.StackKey.of(needed), 1, false);
+                if (!extracted.isEmpty()) craftingGrid.setItem(slot, extracted);
                 continue;
             }
 
-            if (!ItemStack.isSameItemSameTags(before, after)) continue;
+            for (int vaultSlot = 0; vaultSlot < vaultHandler.getSlots(); vaultSlot++) {
+                ItemStack stored = vaultHandler.getStackInSlot(vaultSlot);
+                if (!ItemStack.isSameItemSameTags(stored, needed)) continue;
+                ItemStack extracted = vaultHandler.extractItem(vaultSlot, 1, false);
+                if (!extracted.isEmpty()) {
+                    craftingGrid.setItem(slot, extracted);
+                    break;
+                }
+            }
+        }
+        updateCraftingResult();
+    }
 
-            ItemStack damaged = after.copy();
-            damaged.setCount(1);
+    private void applyCraftingToolDamageToGrid(Player player) {
+        for (int slot = 0; slot < craftingGrid.getContainerSize(); slot++) {
+            ItemStack before = lastGridIngredients[slot];
+            if (!isCraftingToolLike(before)) continue;
+
+            ItemStack after = craftingGrid.getItem(slot);
+            if (!after.isEmpty() && !ItemStack.isSameItemSameTags(before, after)) continue;
+
+            ItemStack damaged = after.isEmpty() ? before.copyWithCount(1) : after.copyWithCount(1);
             damageCraftingTool(damaged, player);
-            craftingGrid.setItem(i, damaged.isEmpty() ? ItemStack.EMPTY : damaged);
+            craftingGrid.setItem(slot, damaged.isEmpty() ? ItemStack.EMPTY : damaged);
         }
     }
 
-    private boolean isCraftingToolLike(ItemStack stack) {
+    private static boolean isCraftingToolLike(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return false;
         if (stack.getItem() instanceof IGTTool) return true;
         if (!ToolHelper.getCraftingToolTypes(stack).isEmpty()) return true;
         return stack.isDamageableItem() && stack.getMaxStackSize() == 1;
     }
 
-    private void damageCraftingTool(ItemStack stack, Player player) {
-        if (stack.isEmpty()) return;
+    private static void damageCraftingTool(ItemStack stack, Player player) {
         if (stack.getItem() instanceof IGTTool || !ToolHelper.getCraftingToolTypes(stack).isEmpty()) {
             ToolHelper.damageItemWhenCrafting(stack, player);
         } else if (stack.isDamageableItem()) {
-            stack.hurtAndBreak(1, player, p -> {});
+            stack.hurtAndBreak(1, player, ignored -> {});
         }
     }
 
-    private Map<net.minecraft.world.item.Item, ArrayDeque<Integer>> buildVaultSlotMap() {
-        Map<net.minecraft.world.item.Item, ArrayDeque<Integer>> map = new HashMap<>();
-        for (int v = 0; v < vaultHandler.getSlots(); v++) {
-            ItemStack s = vaultHandler.getStackInSlot(v);
-            if (!s.isEmpty()) map.computeIfAbsent(s.getItem(), k -> new ArrayDeque<>()).add(v);
+    private ItemStack insertIntoVault(ItemStack stack) {
+        if (stack.isEmpty()) return ItemStack.EMPTY;
+        if (vaultHandler instanceof VaultStorage storage) return storage.insert(stack, false);
+        if (!(vaultHandler instanceof ItemStackHandler handler)) return stack;
+
+        ItemStack remainder = stack;
+        for (int slot = 0; slot < handler.getSlots() && !remainder.isEmpty(); slot++) {
+            remainder = handler.insertItem(slot, remainder, false);
         }
-        return map;
-    }
-
-    private void refillGridFromVaultVoid(Map<net.minecraft.world.item.Item, ArrayDeque<Integer>> vaultSlotMap) {
-        refillGridFromVault(vaultSlotMap, true);
-    }
-
-    private boolean refillGridFromVault(Map<net.minecraft.world.item.Item, ArrayDeque<Integer>> vaultSlotMap, boolean updateResult) {
-        Level level = getLevel();
-        if (level == null || level.isClientSide) return false;
-        if (!(vaultHandler instanceof ItemStackHandler handler)) return false;
-
-        boolean anyRefilled = false;
-        boolean gridBroken = false;
-        refilling = true;
-        try {
-            for (int i = 0; i < craftingGrid.getContainerSize(); i++) {
-                ItemStack needed = lastGridIngredients[i];
-                if (needed == null || needed.isEmpty()) continue;
-
-                ItemStack inGrid = craftingGrid.getItem(i);
-
-                if (!inGrid.isEmpty()) {
-                    if (needed.isDamageableItem() && inGrid.getDamageValue() != needed.getDamageValue()) {
-                        ArrayDeque<Integer> deque = vaultSlotMap.get(needed.getItem());
-                        if (deque != null) {
-                            while (!deque.isEmpty()) {
-                                int v = deque.peek();
-                                ItemStack vaultStack = handler.getStackInSlot(v);
-                                if (vaultStack.isEmpty()) { deque.poll(); continue; }
-                                if (!ItemStack.isSameItemSameTags(vaultStack, needed)) { deque.poll(); continue; }
-                                vaultStack.shrink(1);
-                                handler.setStackInSlot(v, vaultStack.isEmpty() ? ItemStack.EMPTY : vaultStack);
-                                craftingGrid.setItem(i, needed.copyWithCount(1));
-                                if (vaultStack.isEmpty()) deque.poll();
-                                anyRefilled = true;
-                                break;
-                            }
-                        }
-                    }
-                    continue;
-                }
-
-                ArrayDeque<Integer> deque = vaultSlotMap.get(needed.getItem());
-                if (deque == null || deque.isEmpty()) {
-                    gridBroken = true;
-                    continue;
-                }
-
-                boolean filled = false;
-                while (!deque.isEmpty()) {
-                    int v = deque.peek();
-                    ItemStack vaultStack = handler.getStackInSlot(v);
-                    if (vaultStack.isEmpty()) { deque.poll(); continue; }
-                    if (!ItemStack.isSameItemSameTags(vaultStack, needed)) { deque.poll(); continue; }
-                    vaultStack.shrink(1);
-                    handler.setStackInSlot(v, vaultStack.isEmpty() ? ItemStack.EMPTY : vaultStack);
-                    craftingGrid.setItem(i, needed.copyWithCount(1));
-                    if (vaultStack.isEmpty()) deque.poll();
-                    anyRefilled = true;
-                    filled = true;
-                    break;
-                }
-
-                if (!filled) gridBroken = true;
-            }
-        } finally {
-            refilling = false;
-        }
-
-        if (updateResult && !suppressCraftingResultUpdates) {
-            updateCraftingResult();
-        }
-        return anyRefilled && !gridBroken;
-    }
-
-    protected ItemStack insertIntoFullVault(ItemStack stack) {
-        if (machine != null) machine.beginBatch(VaultMachine.BatchSyncMode.DELTA_ONLY);
-        try {
-            return insertIntoFullVaultInternal(stack);
-        } finally {
-            if (machine != null) machine.endBatch();
-        }
-    }
-
-    protected ItemStack insertIntoFullVaultInternal(ItemStack stack) {
-        if (!(vaultHandler instanceof ItemStackHandler handler)) {
-            moveItemStackTo(stack, 0, getVisibleSlotCount(), false);
-            return stack;
-        }
-        int size = handler.getSlots();
-        for (int i = 0; i < size && !stack.isEmpty(); i++) {
-            ItemStack existing = handler.getStackInSlot(i);
-            if (existing.isEmpty() || !ItemStack.isSameItemSameTags(existing, stack)) continue;
-            int limit  = Math.min(handler.getSlotLimit(i), existing.getMaxStackSize());
-            int canFit = limit - existing.getCount();
-            if (canFit <= 0) continue;
-            int moved = Math.min(canFit, stack.getCount());
-            existing.grow(moved);
-            stack.shrink(moved);
-            handler.setStackInSlot(i, existing);
-        }
-        for (int i = 0; i < size && !stack.isEmpty(); i++) {
-            if (!handler.getStackInSlot(i).isEmpty()) continue;
-            int limit = Math.min(handler.getSlotLimit(i), stack.getMaxStackSize());
-            int moved = Math.min(limit, stack.getCount());
-            handler.setStackInSlot(i, stack.copyWithCount(moved));
-            stack.shrink(moved);
-        }
-        return stack;
-    }
-
-    public void doStackedPickup(net.minecraft.world.inventory.Slot slot, int amount) {
-        if (!(slot instanceof VaultSlot vs) || !vs.isAggregated()) return;
-        if (machine != null) machine.beginBatch(VaultMachine.BatchSyncMode.DELTA_ONLY);
-        try {
-            ItemStack extracted = slot.remove(amount);
-            if (extracted.isEmpty()) return;
-            ItemStack carried = getCarried();
-            if (carried.isEmpty()) {
-                setCarried(extracted);
-            } else if (ItemStack.isSameItemSameTags(carried, extracted)) {
-                carried.grow(extracted.getCount());
-            } else {
-                insertIntoFullVaultInternal(extracted);
-            }
-            slot.setChanged();
-            if (displayMode == VaultDisplayMode.STACKED) rebuildAggregatedView();
-        } finally {
-            if (machine != null) machine.endBatch();
-        }
-    }
-
-    private ItemStack quickMoveAggregatedVaultSlot(Slot slot, int invStart, int invEnd) {
-        ItemStack visible = slot.getItem();
-        if (visible.isEmpty()) return ItemStack.EMPTY;
-
-        int toMove = computePlayerCapacity(visible, invStart, invEnd);
-        toMove = Math.min(toMove, visible.getMaxStackSize());
-        if (toMove <= 0) return ItemStack.EMPTY;
-
-        if (machine != null) machine.beginBatch(VaultMachine.BatchSyncMode.DELTA_ONLY);
-        try {
-            ItemStack extracted = slot.remove(toMove);
-            if (extracted.isEmpty()) return ItemStack.EMPTY;
-
-            if (extracted.getCount() > toMove) {
-                ItemStack excess = extracted.split(extracted.getCount() - toMove);
-                insertIntoFullVaultInternal(excess);
-            }
-
-            ItemStack remaining = extracted.copy();
-            moveItemStackTo(remaining, invStart, invEnd, true);
-            if (!remaining.isEmpty()) insertIntoFullVaultInternal(remaining);
-
-            slot.setChanged();
-            if (displayMode == VaultDisplayMode.STACKED) rebuildAggregatedView();
-            return ItemStack.EMPTY;
-        } finally {
-            if (machine != null) machine.endBatch();
-        }
+        return remainder;
     }
 
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
-        if (player.level().isClientSide) return ItemStack.EMPTY;
+        if (player.level().isClientSide || index < 0 || index >= slots.size()) return ItemStack.EMPTY;
         Slot slot = slots.get(index);
         if (!slot.hasItem()) return ItemStack.EMPTY;
-        ItemStack stack    = slot.getItem().copy();
-        ItemStack original = stack.copy();
-        int vaultEnd   = getVisibleSlotCount();
-        int invStart   = playerSlotsStart;
-        int invEnd     = craftingSlotsStart;
-        int craftStart = craftingSlotsStart;
-        int craftEnd   = craftingOutputStart;
-        int craftOut   = craftingOutputStart;
 
-        if (index < vaultEnd && displayMode == VaultDisplayMode.STACKED && slot instanceof VaultSlot vaultSlot && vaultSlot.isAggregated()) {
-            return quickMoveAggregatedVaultSlot(slot, invStart, invEnd);
+        ItemStack source = slot.getItem();
+        ItemStack original = source.copy();
+        if (index == craftingOutputStart) {
+            if (!moveItemStackTo(source, playerSlotsStart, craftingSlotsStart, true)) return ItemStack.EMPTY;
+            slot.onQuickCraft(source, original);
+            if (source.isEmpty()) slot.setByPlayer(ItemStack.EMPTY);
+            else slot.setChanged();
+            if (source.getCount() == original.getCount()) return ItemStack.EMPTY;
+            slot.onTake(player, source);
+            if (!source.isEmpty()) player.drop(source, false);
+            return original;
         }
 
-        if (index == craftOut) {
-            ItemStack result = slot.getItem();
-            if (result.isEmpty()) return ItemStack.EMPTY;
-            int outputPerCraft = result.getCount();
-            if (outputPerCraft <= 0) return ItemStack.EMPTY;
-
-            Level level = getLevel();
-            if (level == null) return ItemStack.EMPTY;
-
-            var recipe = level.getRecipeManager()
-                    .getRecipeFor(RecipeType.CRAFTING, craftingGrid, level)
-                    .orElse(null);
-            if (recipe == null) return ItemStack.EMPTY;
-
-            int maxByStack = result.getMaxStackSize() / outputPerCraft;
-
-            int maxByDurability = Integer.MAX_VALUE;
-            for (int gi = 0; gi < craftingGrid.getContainerSize(); gi++) {
-                ItemStack gridItem = craftingGrid.getItem(gi);
-                if (gridItem.isEmpty() || !gridItem.isDamageableItem()) continue;
-                int uses = Math.max(0, gridItem.getMaxDamage() - gridItem.getDamageValue());
-                maxByDurability = Math.min(maxByDurability, uses);
-            }
-            if (result.isDamageableItem()) {
-                int uses = Math.max(0, (result.getMaxDamage() - result.getDamageValue()) / Math.max(1, outputPerCraft));
-                maxByDurability = Math.min(maxByDurability, uses);
+        if (machine != null) machine.beginBatch();
+        try {
+            ItemStack remaining;
+            if (index >= craftingSlotsStart && index < craftingOutputStart) {
+                remaining = insertIntoVault(source.copy());
+                if (!remaining.isEmpty()) moveItemStackTo(remaining, playerSlotsStart, craftingSlotsStart, true);
+            } else if (index >= playerSlotsStart && index < craftingSlotsStart) {
+                remaining = insertIntoVault(source.copy());
+                if (!remaining.isEmpty()) moveItemStackTo(remaining, craftingSlotsStart, craftingOutputStart, false);
+            } else {
+                return ItemStack.EMPTY;
             }
 
-            int maxCrafts = Math.min(maxByStack, maxByDurability);
-            if (maxCrafts <= 0) return ItemStack.EMPTY;
-
-            ItemStack itemAtStart = result.copy();
-            ItemStack collected   = ItemStack.EMPTY;
-
-            if (machine != null) machine.beginBatch(VaultMachine.BatchSyncMode.DELTA_ONLY);
-            beginCraftingGridBulkUpdate();
-            try {
-                Map<net.minecraft.world.item.Item, ArrayDeque<Integer>> vaultSlotMap = buildVaultSlotMap();
-                skipRefill = true;
-                for (int craft = 0; craft < maxCrafts; craft++) {
-                    ItemStack current = slot.getItem();
-                    if (current.isEmpty()) break;
-                    if (!ItemStack.isSameItemSameTags(current, itemAtStart)) break;
-                    if (computePlayerCapacity(result, invStart, invEnd) < outputPerCraft) break;
-
-                    ItemStack crafted = current.copyWithCount(outputPerCraft);
-                    if (!collected.isEmpty() && !ItemStack.isSameItemSameTags(collected, crafted)) break;
-
-                    snapshotGridIngredients();
-                    slot.onTake(player, current);
-                    boolean refilled = refillGridFromVault(vaultSlotMap, false);
-
-                    if (collected.isEmpty()) collected = crafted.copy();
-                    else collected.grow(crafted.getCount());
-
-                    if (!refilled) break;
-                }
-                if (!collected.isEmpty()) {
-                    if (!moveItemStackTo(collected, invStart, invEnd, true))
-                        insertIntoFullVaultInternal(collected);
-                }
-            } finally {
-                skipRefill = false;
-                endCraftingGridBulkUpdate();
-                if (machine != null) machine.endBatch();
-            }
-            return ItemStack.EMPTY;
-
-        } else if (index < vaultEnd) {
-            if (!moveItemStackTo(stack, invStart, invEnd, true)) return ItemStack.EMPTY;
-        } else if (index >= craftStart && index < craftEnd) {
-            stack = insertIntoFullVault(stack);
-            if (!stack.isEmpty()) moveItemStackTo(stack, invStart, invEnd, true);
-        } else {
-            ItemStack remaining = insertIntoFullVault(stack.copy());
-            int moved = stack.getCount() - remaining.getCount();
-            stack.shrink(moved);
-            if (!stack.isEmpty()) moveItemStackTo(stack, craftStart, craftEnd, false);
+            int moved = original.getCount() - remaining.getCount();
+            if (moved <= 0) return ItemStack.EMPTY;
+            int left = source.getCount() - moved;
+            slot.set(left > 0 ? source.copyWithCount(left) : ItemStack.EMPTY);
+            slot.setChanged();
+            slot.onTake(player, original.copyWithCount(moved));
+            return original;
+        } finally {
+            if (machine != null) machine.endBatch();
         }
-
-        if (stack.getCount() == original.getCount()) return ItemStack.EMPTY;
-        if (stack.isEmpty()) slot.set(ItemStack.EMPTY);
-        else slot.setChanged();
-        return original;
-    }
-
-    private int computePlayerCapacity(ItemStack template, int invStart, int invEnd) {
-        int space = 0;
-        for (int i = invStart; i < invEnd; i++) {
-            Slot s = slots.get(i);
-            ItemStack inSlot = s.getItem();
-            if (inSlot.isEmpty()) {
-                space += Math.min(s.getMaxStackSize(), template.getMaxStackSize());
-            } else if (ItemStack.isSameItemSameTags(inSlot, template)) {
-                space += Math.min(s.getMaxStackSize(), inSlot.getMaxStackSize()) - inSlot.getCount();
-            }
-        }
-        return space;
-    }
-
-    @Override
-    public void initializeContents(int stateId, List<ItemStack> items, ItemStack carried) {
-        int limit        = Math.min(items.size(), slots.size());
-        int vaultVisible = getVisibleSlotCount();
-        for (int i = 0; i < limit; i++) {
-            if (i < vaultVisible) continue;
-            slots.get(i).set(items.get(i));
-        }
-        setCarried(carried);
-    }
-
-    @Override
-    public void setItem(int slotId, int stateId, ItemStack stack) {
-        if (slotId >= 0 && slotId < getVisibleSlotCount()) return;
-        super.setItem(slotId, stateId, stack);
     }
 
     @Override
     public void removed(Player player) {
-        super.removed(player);
         if (!player.level().isClientSide) {
-            if (machine != null && player instanceof net.minecraft.server.level.ServerPlayer sp) {
-                machine.removeViewer(sp);
+            returnCraftingGrid(player);
+            if (machine != null && player instanceof ServerPlayer serverPlayer) {
+                machine.removeViewer(serverPlayer);
             }
-            if (onGridClose != null) {
-                ItemStack[] grid = new ItemStack[craftingGrid.getContainerSize()];
-                for (int i = 0; i < grid.length; i++) grid[i] = craftingGrid.getItem(i).copy();
-                onGridClose.accept(grid);
+        }
+        super.removed(player);
+    }
+
+    private void returnCraftingGrid(Player player) {
+        if (machine != null) machine.beginBatch();
+        try {
+            for (int slot = 0; slot < craftingGrid.getContainerSize(); slot++) {
+                ItemStack stack = craftingGrid.removeItemNoUpdate(slot);
+                if (stack.isEmpty()) continue;
+                ItemStack remainder = insertIntoVault(stack);
+                if (!remainder.isEmpty()) player.getInventory().placeItemBackInInventory(remainder);
+            }
+        } finally {
+            if (machine != null) machine.endBatch();
+        }
+    }
+
+    @Override
+    public boolean canTakeItemForPickAll(ItemStack stack, Slot slot) {
+        return slot.container != craftingResult && super.canTakeItemForPickAll(stack, slot);
+    }
+
+    private final class VaultCraftingResultSlot extends ResultSlot {
+
+        private VaultCraftingResultSlot(Player player, CraftingContainer grid, ResultContainer result,
+                                        int slot, int x, int y) {
+            super(player, grid, result, slot, x, y);
+        }
+
+        @Override
+        public void onTake(Player player, ItemStack stack) {
+            snapshotGridIngredients();
+            super.onTake(player, stack);
+            applyCraftingToolDamageToGrid(player);
+
+            if (machine != null) machine.beginBatch();
+            beginCraftingGridBulkUpdate();
+            try {
+                refillGridFromVault();
+            } finally {
+                endCraftingGridBulkUpdate();
+                if (machine != null) machine.endBatch();
             }
         }
     }
 
-    protected Level getLevel() {
-        for (Slot slot : slots) {
-            if (slot.container instanceof Inventory inv) return inv.player.level();
+    private static final class LockedSlot extends Slot {
+
+        private LockedSlot(Inventory inventory, int index, int x, int y) {
+            super(inventory, index, x, y);
         }
-        return null;
+
+        @Override
+        public boolean mayPickup(Player player) {
+            return false;
+        }
+
+        @Override
+        public boolean mayPlace(ItemStack stack) {
+            return false;
+        }
     }
 }

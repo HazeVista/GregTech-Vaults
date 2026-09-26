@@ -1,9 +1,11 @@
 package com.astrogreg.gregvaults.screen;
 
+import com.gregtechceu.gtceu.common.machine.owner.MachineOwner;
+
+import net.minecraft.core.GlobalPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemStackHandler;
@@ -11,90 +13,64 @@ import net.minecraftforge.items.ItemStackHandler;
 import com.astrogreg.gregvaults.items.WirelessTerminalItem;
 import com.astrogreg.gregvaults.multiblock.VaultMachine;
 import com.astrogreg.gregvaults.registry.VaultRegistry;
+import org.jetbrains.annotations.Nullable;
 
 @SuppressWarnings("all")
 public class VaultTerminalMenu extends AbstractVaultMenu {
 
-    private int lockedMenuSlot = -1;
+    private final @Nullable GlobalPos linkedVault;
 
     public VaultTerminalMenu(int windowId, Inventory playerInv, IItemHandler vaultHandler) {
-        this(windowId, playerInv, vaultHandler, null);
+        this(windowId, playerInv, vaultHandler, null, null, vaultHandler.getSlots(), -1);
     }
 
     public VaultTerminalMenu(int windowId, Inventory playerInv, IItemHandler vaultHandler, VaultMachine machine) {
-        super(VaultRegistry.VAULT_TERMINAL_MENU.get(), windowId, playerInv, vaultHandler, machine);
+        this(windowId, playerInv, vaultHandler, machine, null, vaultHandler.getSlots(), -1);
+    }
+
+    public VaultTerminalMenu(int windowId, Inventory playerInv, IItemHandler vaultHandler, VaultMachine machine,
+                             @Nullable GlobalPos linkedVault, int terminalSlot) {
+        this(windowId, playerInv, vaultHandler, machine, linkedVault, vaultHandler.getSlots(), terminalSlot);
+    }
+
+    private VaultTerminalMenu(int windowId, Inventory playerInv, IItemHandler vaultHandler, VaultMachine machine,
+                              @Nullable GlobalPos linkedVault, int totalSlots, int terminalSlot) {
+        super(VaultRegistry.VAULT_TERMINAL_MENU.get(), windowId, playerInv, vaultHandler, machine, totalSlots,
+                terminalSlot);
+        this.linkedVault = linkedVault;
     }
 
     public VaultTerminalMenu(int windowId, Inventory playerInv, FriendlyByteBuf buf) {
-        this(windowId, playerInv, new ItemStackHandler(buf.readInt()));
-    }
-
-    @Override
-    protected void addPlayerSlots(Inventory playerInv) {
-        ItemStack terminalStack = findTerminalStack(playerInv);
-        int terminalInvSlot = findTerminalInvSlot(playerInv, terminalStack);
-
-        for (int row = 0; row < 3; row++) {
-            for (int col = 0; col < 9; col++) {
-                int invSlot = col + row * 9 + 9;
-                int menuSlot = slots.size();
-                addSlot(invSlot == terminalInvSlot ?
-                        new LockedSlot(playerInv, invSlot, SLOTS_X + col * SLOT_SIZE, playerY + row * SLOT_SIZE) :
-                        new Slot(playerInv, invSlot, SLOTS_X + col * SLOT_SIZE, playerY + row * SLOT_SIZE));
-                if (invSlot == terminalInvSlot) lockedMenuSlot = menuSlot;
-            }
-        }
-        for (int col = 0; col < 9; col++) {
-            int invSlot = col;
-            int menuSlot = slots.size();
-            addSlot(invSlot == terminalInvSlot ?
-                    new LockedSlot(playerInv, invSlot, SLOTS_X + col * SLOT_SIZE, hotbarY) :
-                    new Slot(playerInv, invSlot, SLOTS_X + col * SLOT_SIZE, hotbarY));
-            if (invSlot == terminalInvSlot) lockedMenuSlot = menuSlot;
-        }
-    }
-
-    private static ItemStack findTerminalStack(Inventory playerInv) {
-        ItemStack main = playerInv.player.getMainHandItem();
-        if (main.getItem() instanceof WirelessTerminalItem) return main;
-        ItemStack off = playerInv.player.getOffhandItem();
-        if (off.getItem() instanceof WirelessTerminalItem) return off;
-        return ItemStack.EMPTY;
-    }
-
-    private static int findTerminalInvSlot(Inventory playerInv, ItemStack terminalStack) {
-        if (terminalStack.isEmpty()) return -1;
-        for (int i = 0; i < playerInv.getContainerSize(); i++) {
-            if (playerInv.getItem(i) == terminalStack) return i;
-        }
-        return -1;
+        this(windowId, playerInv, new ItemStackHandler(0), null, null,
+                Math.max(0, buf.readInt()), buf.readInt());
     }
 
     @Override
     public boolean stillValid(Player player) {
-        return machine == null || machine.isFormed();
-    }
-
-    @Override
-    public boolean canTakeItemForPickAll(ItemStack stack, Slot slot) {
-        if (slot.index == lockedMenuSlot) return false;
-        return super.canTakeItemForPickAll(stack, slot);
-    }
-
-    private static final class LockedSlot extends Slot {
-
-        LockedSlot(Inventory inv, int index, int x, int y) {
-            super(inv, index, x, y);
-        }
-
-        @Override
-        public boolean mayPickup(Player player) {
+        if (machine == null) return true;
+        if (!machine.isFormed() || !machine.getVaultTier().wirelessAllowed() || linkedVault == null ||
+                !MachineOwner.canOpenOwnerMachine(player, machine)) {
             return false;
         }
 
-        @Override
-        public boolean mayPlace(ItemStack stack) {
-            return false;
+        ItemStack terminal = findLinkedTerminal(player.getInventory());
+        if (terminal.isEmpty()) return false;
+
+        var config = com.astrogreg.gregvaults.config.VaultConfig.INSTANCE.wirelessTerminal;
+        if (config.infiniteRange) return true;
+        if (!player.level().dimension().equals(linkedVault.dimension())) return false;
+        return player.blockPosition().distSqr(linkedVault.pos()) <=
+                Math.pow(WirelessTerminalItem.getRange(terminal), 2);
+    }
+
+    private ItemStack findLinkedTerminal(Inventory inventory) {
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            ItemStack stack = inventory.getItem(slot);
+            if (stack.getItem() instanceof WirelessTerminalItem &&
+                    linkedVault.equals(WirelessTerminalItem.getLinkedPosition(stack))) {
+                return stack;
+            }
         }
+        return ItemStack.EMPTY;
     }
 }
