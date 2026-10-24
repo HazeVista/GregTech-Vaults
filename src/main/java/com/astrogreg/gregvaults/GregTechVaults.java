@@ -58,13 +58,13 @@ public class GregTechVaults {
         VaultDatagen.init();
     }
 
+    public static ResourceLocation id(String path) {
+        return new ResourceLocation(MOD_ID, path);
+    }
+
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(VaultNetwork::init);
         event.enqueueWork(VaultRegistry::registerLinkables);
-    }
-
-    public static ResourceLocation id(String path) {
-        return new ResourceLocation(MOD_ID, path);
     }
 
     private void addMaterialRegistries(MaterialRegistryEvent event) {

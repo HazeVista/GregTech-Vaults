@@ -26,8 +26,6 @@ import com.tterrag.registrate.util.entry.MenuEntry;
 @SuppressWarnings("all")
 public final class VaultRegistry {
 
-    private VaultRegistry() {}
-
     public static final BlockEntry<VaultCoreBlock> VAULT_CORE_MK1 = GregTechVaults.REGISTRATE
             .block("vault_core_mk1", props -> new VaultCoreBlock(CoreTier.MK1, props))
             .properties(p -> p.strength(3f).sound(SoundType.METAL))
@@ -37,7 +35,6 @@ public final class VaultRegistry {
             .lang("Vault Core MK I")
             .simpleItem()
             .register();
-
     public static final BlockEntry<VaultCoreBlock> VAULT_CORE_MK2 = GregTechVaults.REGISTRATE
             .block("vault_core_mk2", props -> new VaultCoreBlock(CoreTier.MK2, props))
             .properties(p -> p.strength(3f).sound(SoundType.METAL))
@@ -47,7 +44,6 @@ public final class VaultRegistry {
             .lang("Vault Core MK II")
             .simpleItem()
             .register();
-
     public static final BlockEntry<VaultCoreBlock> VAULT_CORE_MK3 = GregTechVaults.REGISTRATE
             .block("vault_core_mk3", props -> new VaultCoreBlock(CoreTier.MK3, props))
             .properties(p -> p.strength(3f).sound(SoundType.METAL))
@@ -57,26 +53,24 @@ public final class VaultRegistry {
             .lang("Vault Core MK III")
             .simpleItem()
             .register();
-
     public static final ItemEntry<WirelessTerminalItem> WIRELESS_VAULT_TERMINAL = GregTechVaults.REGISTRATE
             .item("wireless_vault_terminal", WirelessTerminalItem::new)
             .properties(p -> p.stacksTo(1))
             .register();
-
     public static final MenuEntry<VaultContainerMenu> VAULT_MENU = GregTechVaults.REGISTRATE
             .menu("vault_menu",
                     (type, windowId, inventory, buffer) -> new VaultContainerMenu(windowId, inventory, buffer),
                     () -> VaultScreen::new)
             .register();
-
     public static final MenuEntry<VaultTerminalMenu> VAULT_TERMINAL_MENU = GregTechVaults.REGISTRATE
             .menu("vault_terminal_menu",
                     (type, windowId, inventory, buffer) -> new VaultTerminalMenu(windowId, inventory, buffer),
                     () -> VaultTerminalScreen::new)
             .register();
-
     public static PartAbility VAULT_INTERFACE_ABILITY;
     public static MachineDefinition VAULT_INTERFACE;
+
+    private VaultRegistry() {}
 
     public static void init() {}
 

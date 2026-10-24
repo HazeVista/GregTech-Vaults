@@ -8,13 +8,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.CraftingContainer;
-import net.minecraft.world.inventory.MenuType;
-import net.minecraft.world.inventory.ResultContainer;
-import net.minecraft.world.inventory.ResultSlot;
-import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.inventory.TransientCraftingContainer;
+import net.minecraft.world.inventory.*;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
@@ -28,11 +22,7 @@ import com.astrogreg.gregvaults.network.VaultNetwork;
 import com.astrogreg.gregvaults.storage.VaultStorage;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
+import java.util.*;
 
 public abstract class AbstractVaultMenu extends AbstractContainerMenu {
 
@@ -115,6 +105,25 @@ public abstract class AbstractVaultMenu extends AbstractContainerMenu {
         updateCraftingResult();
     }
 
+    private static Slot createPlayerSlot(Inventory inventory, int slot, int x, int y, int lockedPlayerSlot) {
+        return slot == lockedPlayerSlot ? new LockedSlot(inventory, slot, x, y) : new Slot(inventory, slot, x, y);
+    }
+
+    private static boolean isCraftingToolLike(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+        if (stack.getItem() instanceof IGTTool) return true;
+        if (!ToolHelper.getCraftingToolTypes(stack).isEmpty()) return true;
+        return stack.isDamageableItem() && stack.getMaxStackSize() == 1;
+    }
+
+    private static void damageCraftingTool(ItemStack stack, Player player) {
+        if (stack.getItem() instanceof IGTTool || !ToolHelper.getCraftingToolTypes(stack).isEmpty()) {
+            ToolHelper.damageItemWhenCrafting(stack, player);
+        } else if (stack.isDamageableItem()) {
+            stack.hurtAndBreak(1, player, ignored -> {});
+        }
+    }
+
     private void addPlayerSlots(Inventory playerInventory, int lockedPlayerSlot) {
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
@@ -127,10 +136,6 @@ public abstract class AbstractVaultMenu extends AbstractContainerMenu {
             addSlot(createPlayerSlot(playerInventory, col,
                     SLOTS_X + col * SLOT_SIZE, hotbarY, lockedPlayerSlot));
         }
-    }
-
-    private static Slot createPlayerSlot(Inventory inventory, int slot, int x, int y, int lockedPlayerSlot) {
-        return slot == lockedPlayerSlot ? new LockedSlot(inventory, slot, x, y) : new Slot(inventory, slot, x, y);
     }
 
     public List<VaultCatalogEntry> getCatalogPage() {
@@ -387,21 +392,6 @@ public abstract class AbstractVaultMenu extends AbstractContainerMenu {
         }
     }
 
-    private static boolean isCraftingToolLike(ItemStack stack) {
-        if (stack == null || stack.isEmpty()) return false;
-        if (stack.getItem() instanceof IGTTool) return true;
-        if (!ToolHelper.getCraftingToolTypes(stack).isEmpty()) return true;
-        return stack.isDamageableItem() && stack.getMaxStackSize() == 1;
-    }
-
-    private static void damageCraftingTool(ItemStack stack, Player player) {
-        if (stack.getItem() instanceof IGTTool || !ToolHelper.getCraftingToolTypes(stack).isEmpty()) {
-            ToolHelper.damageItemWhenCrafting(stack, player);
-        } else if (stack.isDamageableItem()) {
-            stack.hurtAndBreak(1, player, ignored -> {});
-        }
-    }
-
     private ItemStack insertIntoVault(ItemStack stack) {
         if (stack.isEmpty()) return ItemStack.EMPTY;
         if (vaultHandler instanceof VaultStorage storage) return storage.insert(stack, false);
@@ -488,6 +478,23 @@ public abstract class AbstractVaultMenu extends AbstractContainerMenu {
         return slot.container != craftingResult && super.canTakeItemForPickAll(stack, slot);
     }
 
+    private static final class LockedSlot extends Slot {
+
+        private LockedSlot(Inventory inventory, int index, int x, int y) {
+            super(inventory, index, x, y);
+        }
+
+        @Override
+        public boolean mayPickup(Player player) {
+            return false;
+        }
+
+        @Override
+        public boolean mayPlace(ItemStack stack) {
+            return false;
+        }
+    }
+
     private final class VaultCraftingResultSlot extends ResultSlot {
 
         private VaultCraftingResultSlot(Player player, CraftingContainer grid, ResultContainer result,
@@ -509,23 +516,6 @@ public abstract class AbstractVaultMenu extends AbstractContainerMenu {
                 endCraftingGridBulkUpdate();
                 if (machine != null) machine.endBatch();
             }
-        }
-    }
-
-    private static final class LockedSlot extends Slot {
-
-        private LockedSlot(Inventory inventory, int index, int x, int y) {
-            super(inventory, index, x, y);
-        }
-
-        @Override
-        public boolean mayPickup(Player player) {
-            return false;
-        }
-
-        @Override
-        public boolean mayPlace(ItemStack stack) {
-            return false;
         }
     }
 }

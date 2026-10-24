@@ -14,16 +14,8 @@ import java.nio.file.Path;
 @OnlyIn(Dist.CLIENT)
 public class VaultScreenState {
 
-    public static class State {
-
-        public VaultSortMode sortMode = VaultSortMode.NAME;
-        public boolean sortReversed = false;
-        public String searchQuery = "";
-    }
-
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final String FILE_NAME = "gregtechvaults-client.json";
-
     private static State cached = null;
 
     public static State get() {
@@ -65,5 +57,12 @@ public class VaultScreenState {
     private static Path configPath() {
         return Minecraft.getInstance().gameDirectory.toPath()
                 .resolve("config").resolve(FILE_NAME);
+    }
+
+    public static class State {
+
+        public VaultSortMode sortMode = VaultSortMode.NAME;
+        public boolean sortReversed = false;
+        public String searchQuery = "";
     }
 }

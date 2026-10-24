@@ -14,6 +14,7 @@ import com.astrogreg.gregvaults.GregTechVaults;
 import com.astrogreg.gregvaults.network.CPacketVaultAction;
 import com.astrogreg.gregvaults.network.CPacketVaultCatalogClick;
 import com.astrogreg.gregvaults.network.VaultNetwork;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -47,41 +48,17 @@ public abstract class AbstractVaultScreen<T extends AbstractVaultMenu> extends A
     private static final int C_SEARCH_EDGE_LIGHT = 0xFFFFFFFF;
     private static final int C_SEARCH_NORMAL = 0xFF606060;
     private static final int C_SEARCH_FOCUSED = 0xFFA8A8A8;
-    private static final int SB_JOIN_X = TEX_W - 3;
-    private static final int SB_X = TEX_W - 1;
-    private static final int SB_W = 9;
-    private static final int SB_EXTENSION_TOP = 2;
-    private static final int SB_BOTTOM_MARGIN = 2;
-    private static final int C_SB_PANEL = 0xFFC6C6C6;
-    private static final int C_SB_RECESS = 0xFF555555;
-    private static final int C_SB_TRACK = 0xFF8B8B8B;
-    private static final int C_SB_THUMB = 0xFFD8D8D8;
-    private static final int C_SB_HIGHLIGHT = 0xFFFFFFFF;
+    private static final int SCROLLBAR_WIDTH = 10;
+    private static final int SCROLLBAR_BOTTOM_MARGIN = 2;
     private static final int BTN_X_OFFSET = -20;
     private static final int BTN_SIZE = 18;
     private static final int BTN_GAP = 2;
-
-    private record IconButton(int relX, int relY, Component tooltip, Runnable action) {
-
-        boolean isHovered(int screenX, int screenY, int mouseX, int mouseY) {
-            int x = screenX + relX;
-            int y = screenY + relY;
-            return mouseX >= x && mouseX < x + BTN_SIZE && mouseY >= y && mouseY < y + BTN_SIZE;
-        }
-    }
-
     protected final int visibleRows;
-    private final int scrollbarHeight;
-
+    private final VaultScrollbar scrollbar;
     protected EditBox searchBox;
     private List<IconButton> iconButtons = List.of();
-    private int scrollOffset;
-    private int scrollbarScreenX;
-    private int scrollbarScreenTopY;
-    private boolean draggingScrollbar;
     private int buttonScreenX;
     private int buttonScreenY;
-
     private VaultSortMode currentSortMode = VaultSortMode.NAME;
     private boolean currentSortReversed;
     private boolean nameSortReversed;
@@ -90,16 +67,24 @@ public abstract class AbstractVaultScreen<T extends AbstractVaultMenu> extends A
     protected AbstractVaultScreen(T menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
         this.visibleRows = menu.visibleRows;
-        this.scrollbarHeight = visibleRows * TEX_ROW_H - SB_BOTTOM_MARGIN;
+        this.scrollbar = new VaultScrollbar(visibleRows, this::maxScroll,
+                scrollRow -> VaultNetwork.CHANNEL.sendToServer(CPacketVaultAction.scroll(scrollRow)));
         this.imageWidth = TEX_W;
         this.imageHeight = menu.hotbarY + AbstractVaultMenu.SLOT_SIZE + 4;
+    }
+
+    private static String formatCount(long count) {
+        if (count < 10_000L) return Long.toString(count);
+        if (count < 1_000_000L) return (count / 1_000L) + "k";
+        if (count < 1_000_000_000L) return (count / 1_000_000L) + "m";
+        return (count / 1_000_000_000L) + "b";
     }
 
     @Override
     protected void init() {
         super.init();
-        scrollbarScreenX = leftPos + SB_X;
-        scrollbarScreenTopY = topPos + TEX_TOP_H;
+        scrollbar.setBounds(leftPos + TEX_W - 1, topPos + TEX_TOP_H,
+                SCROLLBAR_WIDTH, visibleRows * TEX_ROW_H - SCROLLBAR_BOTTOM_MARGIN);
         buttonScreenX = leftPos;
         buttonScreenY = topPos;
 
@@ -110,30 +95,12 @@ public abstract class AbstractVaultScreen<T extends AbstractVaultMenu> extends A
         searchBox.setBordered(false);
         searchBox.setTextColor(0xFFFFFF);
         searchBox.setResponder(query -> {
-            scrollOffset = 0;
+            scrollbar.setScrollOffset(0);
             VaultNetwork.CHANNEL.sendToServer(CPacketVaultAction.search(query));
         });
         addRenderableWidget(searchBox);
 
-        List<IconButton> buttons = new ArrayList<>();
-        buttons.add(new IconButton(BTN_X_OFFSET, 3,
-                Component.literal("Sort: Name"), () -> {
-                    nameSortReversed = !nameSortReversed;
-                    currentSortMode = VaultSortMode.NAME;
-                    currentSortReversed = nameSortReversed;
-                    scrollOffset = 0;
-                    VaultNetwork.CHANNEL.sendToServer(
-                            CPacketVaultAction.sort(VaultSortMode.NAME, nameSortReversed));
-                }));
-        buttons.add(new IconButton(BTN_X_OFFSET, 3 + BTN_SIZE + BTN_GAP,
-                Component.literal("Sort: Amount"), () -> {
-                    amountSortReversed = !amountSortReversed;
-                    currentSortMode = VaultSortMode.COUNT;
-                    currentSortReversed = amountSortReversed;
-                    scrollOffset = 0;
-                    VaultNetwork.CHANNEL.sendToServer(
-                            CPacketVaultAction.sort(VaultSortMode.COUNT, amountSortReversed));
-                }));
+        List<IconButton> buttons = createButtons();
         iconButtons = List.copyOf(buttons);
 
         VaultScreenState.State state = VaultScreenState.get();
@@ -151,6 +118,29 @@ public abstract class AbstractVaultScreen<T extends AbstractVaultMenu> extends A
         onInit();
     }
 
+    private @NotNull List<IconButton> createButtons() {
+        List<IconButton> buttons = new ArrayList<>();
+        buttons.add(new IconButton(BTN_X_OFFSET, 3,
+                Component.literal("Sort: Name"), () -> {
+                    nameSortReversed = !nameSortReversed;
+                    currentSortMode = VaultSortMode.NAME;
+                    currentSortReversed = nameSortReversed;
+                    scrollbar.setScrollOffset(0);
+                    VaultNetwork.CHANNEL.sendToServer(
+                            CPacketVaultAction.sort(VaultSortMode.NAME, nameSortReversed));
+                }));
+        buttons.add(new IconButton(BTN_X_OFFSET, 3 + BTN_SIZE + BTN_GAP,
+                Component.literal("Sort: Amount"), () -> {
+                    amountSortReversed = !amountSortReversed;
+                    currentSortMode = VaultSortMode.COUNT;
+                    currentSortReversed = amountSortReversed;
+                    scrollbar.setScrollOffset(0);
+                    VaultNetwork.CHANNEL.sendToServer(
+                            CPacketVaultAction.sort(VaultSortMode.COUNT, amountSortReversed));
+                }));
+        return buttons;
+    }
+
     protected void onInit() {}
 
     protected void renderExtras(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {}
@@ -160,14 +150,7 @@ public abstract class AbstractVaultScreen<T extends AbstractVaultMenu> extends A
     }
 
     public void syncScrollFromServer(int scrollRow) {
-        scrollOffset = Math.max(0, Math.min(maxScroll(), scrollRow));
-    }
-
-    protected void applyScroll(int newScroll) {
-        int clamped = Math.max(0, Math.min(maxScroll(), newScroll));
-        if (clamped == scrollOffset) return;
-        scrollOffset = clamped;
-        VaultNetwork.CHANNEL.sendToServer(CPacketVaultAction.scroll(scrollOffset));
+        scrollbar.setScrollOffset(scrollRow);
     }
 
     @Override
@@ -226,13 +209,6 @@ public abstract class AbstractVaultScreen<T extends AbstractVaultMenu> extends A
         graphics.renderComponentTooltip(font, lines, mouseX, mouseY);
     }
 
-    private static String formatCount(long count) {
-        if (count < 10_000L) return Long.toString(count);
-        if (count < 1_000_000L) return (count / 1_000L) + "k";
-        if (count < 1_000_000_000L) return (count / 1_000_000L) + "m";
-        return (count / 1_000_000_000L) + "b";
-    }
-
     private void renderButtonIcons(GuiGraphics graphics) {
         ResourceLocation[] icons = {
                 nameSortReversed ? Z_FIRST_TEXTURE : A_FIRST_TEXTURE,
@@ -281,7 +257,7 @@ public abstract class AbstractVaultScreen<T extends AbstractVaultMenu> extends A
         graphics.blit(TEXTURE, x + menu.craftOutX - 1, y + menu.craftOutY - 1,
                 7, 17, slotSize, slotSize);
         graphics.blit(TEXTURE, x, y + menu.playerY - 15, 0, TEX_PLAYER_V, TEX_W, TEX_PLAYER_H);
-        renderScrollbar(graphics);
+        scrollbar.render(graphics);
     }
 
     private void renderSearchBoxBackground(GuiGraphics graphics, int x, int y) {
@@ -292,52 +268,20 @@ public abstract class AbstractVaultScreen<T extends AbstractVaultMenu> extends A
         graphics.fill(x + 1, y + SEARCH_H - 1, x + SEARCH_W, y + SEARCH_H, C_SEARCH_EDGE_LIGHT);
     }
 
-    private void renderScrollbar(GuiGraphics graphics) {
-        int maxScroll = maxScroll();
-        if (maxScroll == 0) return;
-
-        int x = scrollbarScreenX;
-        int y = scrollbarScreenTopY;
-        int extensionLeft = leftPos + SB_JOIN_X;
-        int extensionTop = y - SB_EXTENSION_TOP;
-        int extensionRight = leftPos + TEX_W + SB_W + 1;
-        int extensionBottom = y + visibleRows * TEX_ROW_H;
-        graphics.fill(extensionLeft, extensionTop, extensionRight, extensionBottom, C_SB_PANEL);
-        graphics.fill(extensionLeft, extensionTop, extensionRight, extensionTop + 1, C_SB_HIGHLIGHT);
-        graphics.fill(extensionRight - 1, extensionTop + 1, extensionRight, extensionBottom, C_SB_RECESS);
-        graphics.fill(extensionLeft, extensionBottom - 1, extensionRight, extensionBottom, C_SB_RECESS);
-
-        graphics.fill(x, y, x + SB_W, y + scrollbarHeight, C_SB_RECESS);
-        graphics.fill(x + 1, y + 1, x + SB_W - 1, y + scrollbarHeight - 1, C_SB_TRACK);
-
-        int thumbHeight = scrollbarThumbHeight(maxScroll);
-        int thumbY = y + Math.round((float) scrollOffset / maxScroll * (scrollbarHeight - thumbHeight));
-        graphics.fill(x + 1, thumbY, x + SB_W - 1, thumbY + thumbHeight, C_SB_THUMB);
-        graphics.fill(x + 1, thumbY, x + 2, thumbY + thumbHeight, C_SB_HIGHLIGHT);
-    }
-
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-        if (button == 0 && draggingScrollbar) {
-            scrollFromMouse(mouseY);
-            return true;
-        }
+        if (scrollbar.mouseDragged(mouseY, button)) return true;
         return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
     }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        applyScroll(scrollOffset + (delta < 0 ? 1 : -1));
-        return true;
+        return scrollbar.mouseScrolled(delta);
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button == 0 && isOverScrollbar(mouseX, mouseY)) {
-            draggingScrollbar = true;
-            scrollFromMouse(mouseY);
-            return true;
-        }
+        if (scrollbar.mouseClicked(mouseX, mouseY, button)) return true;
 
         if (button == 0 || button == 1) {
             int catalogIndex = catalogIndexAt(mouseX, mouseY);
@@ -367,30 +311,8 @@ public abstract class AbstractVaultScreen<T extends AbstractVaultMenu> extends A
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (button == 0 && draggingScrollbar) {
-            draggingScrollbar = false;
-            return true;
-        }
+        if (scrollbar.mouseReleased(button)) return true;
         return super.mouseReleased(mouseX, mouseY, button);
-    }
-
-    private boolean isOverScrollbar(double mouseX, double mouseY) {
-        return maxScroll() > 0 &&
-                mouseX >= scrollbarScreenX && mouseX < scrollbarScreenX + SB_W &&
-                mouseY >= scrollbarScreenTopY && mouseY < scrollbarScreenTopY + scrollbarHeight;
-    }
-
-    private void scrollFromMouse(double mouseY) {
-        int maxScroll = maxScroll();
-        if (maxScroll == 0) return;
-        int thumbHeight = scrollbarThumbHeight(maxScroll);
-        int travel = scrollbarHeight - thumbHeight;
-        double ratio = (mouseY - scrollbarScreenTopY - thumbHeight / 2.0) / travel;
-        applyScroll((int) Math.round(ratio * maxScroll));
-    }
-
-    private int scrollbarThumbHeight(int maxScroll) {
-        return Math.max(12, scrollbarHeight * visibleRows / (maxScroll + visibleRows));
     }
 
     private int catalogIndexAt(double mouseX, double mouseY) {
@@ -424,5 +346,14 @@ public abstract class AbstractVaultScreen<T extends AbstractVaultMenu> extends A
     public boolean charTyped(char character, int modifiers) {
         if (searchBox.isFocused()) return searchBox.charTyped(character, modifiers);
         return super.charTyped(character, modifiers);
+    }
+
+    private record IconButton(int relX, int relY, Component tooltip, Runnable action) {
+
+        boolean isHovered(int screenX, int screenY, int mouseX, int mouseY) {
+            int x = screenX + relX;
+            int y = screenY + relY;
+            return mouseX >= x && mouseX < x + BTN_SIZE && mouseY >= y && mouseY < y + BTN_SIZE;
+        }
     }
 }

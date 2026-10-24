@@ -7,12 +7,7 @@ import net.minecraftforge.items.ItemStackHandler;
 
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.IntConsumer;
 
 public final class VaultStorage extends ItemStackHandler {
@@ -25,6 +20,12 @@ public final class VaultStorage extends ItemStackHandler {
         super(slots);
         this.changeListener = Objects.requireNonNull(changeListener);
         this.indexedStacks = emptyStacks(slots);
+    }
+
+    private static ItemStack[] emptyStacks(int size) {
+        ItemStack[] stacks = new ItemStack[size];
+        Arrays.fill(stacks, ItemStack.EMPTY);
+        return stacks;
     }
 
     public List<Entry> getEntries() {
@@ -120,12 +121,6 @@ public final class VaultStorage extends ItemStackHandler {
             long updated = (current == null ? 0 : current) + difference;
             return updated > 0 ? updated : null;
         });
-    }
-
-    private static ItemStack[] emptyStacks(int size) {
-        ItemStack[] stacks = new ItemStack[size];
-        Arrays.fill(stacks, ItemStack.EMPTY);
-        return stacks;
     }
 
     public record Entry(StackKey key, long count) {
