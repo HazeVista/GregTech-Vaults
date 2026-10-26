@@ -14,6 +14,7 @@ import com.astrogreg.gregvaults.GregTechVaults;
 import com.astrogreg.gregvaults.network.CPacketVaultAction;
 import com.astrogreg.gregvaults.network.CPacketVaultCatalogClick;
 import com.astrogreg.gregvaults.network.VaultNetwork;
+
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -39,6 +40,11 @@ public abstract class AbstractVaultScreen<T extends AbstractVaultMenu> extends A
     protected static final int TEX_ROW_H = 18;
     protected static final int TEX_PLAYER_V = 125;
     protected static final int TEX_PLAYER_H = 96;
+    static final int VAULT_EDGE_SIZE = 3;
+    static final int VAULT_PANEL_COLOR = 0xFFC6C6C6;
+    static final int VAULT_EDGE_OUTLINE_COLOR = 0xFF000000;
+    static final int VAULT_EDGE_LIGHT_COLOR = 0xFFFFFFFE;
+    static final int VAULT_EDGE_DARK_COLOR = 0xFF4F4F4F;
 
     private static final int SEARCH_X = 44;
     private static final int SEARCH_Y = 4;
@@ -48,8 +54,9 @@ public abstract class AbstractVaultScreen<T extends AbstractVaultMenu> extends A
     private static final int C_SEARCH_EDGE_LIGHT = 0xFFFFFFFF;
     private static final int C_SEARCH_NORMAL = 0xFF606060;
     private static final int C_SEARCH_FOCUSED = 0xFFA8A8A8;
-    private static final int SCROLLBAR_WIDTH = 10;
-    private static final int SCROLLBAR_BOTTOM_MARGIN = 2;
+    private static final int SCROLLBAR_WIDTH = 13;
+    private static final int SCROLLBAR_TOP_MARGIN = 4;
+    private static final int SCROLLBAR_BOTTOM_MARGIN = 4;
     private static final int BTN_X_OFFSET = -20;
     private static final int BTN_SIZE = 18;
     private static final int BTN_GAP = 2;
@@ -83,8 +90,9 @@ public abstract class AbstractVaultScreen<T extends AbstractVaultMenu> extends A
     @Override
     protected void init() {
         super.init();
-        scrollbar.setBounds(leftPos + TEX_W - 1, topPos + TEX_TOP_H,
-                SCROLLBAR_WIDTH, visibleRows * TEX_ROW_H - SCROLLBAR_BOTTOM_MARGIN);
+        scrollbar.setBounds(leftPos + TEX_W, topPos + TEX_TOP_H + SCROLLBAR_TOP_MARGIN,
+                SCROLLBAR_WIDTH,
+                visibleRows * TEX_ROW_H - SCROLLBAR_TOP_MARGIN - SCROLLBAR_BOTTOM_MARGIN);
         buttonScreenX = leftPos;
         buttonScreenY = topPos;
 
@@ -236,13 +244,15 @@ public abstract class AbstractVaultScreen<T extends AbstractVaultMenu> extends A
 
         int craftSectionY = y + menu.craftSectionY;
         int craftSectionHeight = 4 * TEX_ROW_H;
-        graphics.fill(x, craftSectionY, x + TEX_W, craftSectionY + craftSectionHeight, 0xFFC6C6C6);
-        graphics.fill(x, craftSectionY, x + 1, craftSectionY + craftSectionHeight, 0xFF000000);
-        graphics.fill(x + 1, craftSectionY, x + 3, craftSectionY + craftSectionHeight, 0xFFFFFFFE);
+        graphics.fill(x, craftSectionY, x + TEX_W, craftSectionY + craftSectionHeight, VAULT_PANEL_COLOR);
+        graphics.fill(x, craftSectionY, x + 1, craftSectionY + craftSectionHeight,
+                VAULT_EDGE_OUTLINE_COLOR);
+        graphics.fill(x + 1, craftSectionY, x + VAULT_EDGE_SIZE, craftSectionY + craftSectionHeight,
+                VAULT_EDGE_LIGHT_COLOR);
         graphics.fill(x + TEX_W - 1, craftSectionY, x + TEX_W,
-                craftSectionY + craftSectionHeight, 0xFF000000);
-        graphics.fill(x + TEX_W - 3, craftSectionY, x + TEX_W - 1,
-                craftSectionY + craftSectionHeight, 0xFF4F4F4F);
+                craftSectionY + craftSectionHeight, VAULT_EDGE_OUTLINE_COLOR);
+        graphics.fill(x + TEX_W - VAULT_EDGE_SIZE, craftSectionY, x + TEX_W - 1,
+                craftSectionY + craftSectionHeight, VAULT_EDGE_DARK_COLOR);
 
         int craftingY = y + menu.craftGridY;
         for (int row = 0; row < 3; row++) {

@@ -65,6 +65,7 @@ public abstract class AbstractVaultMenu extends AbstractContainerMenu {
     private boolean sortReversed;
 
     private boolean suppressCraftingResultUpdates;
+    private boolean deferCraftingBroadcasts;
     private int lastGridHash;
 
     protected AbstractVaultMenu(MenuType<?> menuType, int windowId, Inventory playerInventory,
@@ -312,7 +313,7 @@ public abstract class AbstractVaultMenu extends AbstractContainerMenu {
         suppressCraftingResultUpdates = false;
         lastGridHash = gridHash();
         updateCraftingResult();
-        broadcastChanges();
+        if (!deferCraftingBroadcasts) broadcastChanges();
     }
 
     @Override
@@ -413,14 +414,31 @@ public abstract class AbstractVaultMenu extends AbstractContainerMenu {
         ItemStack source = slot.getItem();
         ItemStack original = source.copy();
         if (index == craftingOutputStart) {
-            if (!moveItemStackTo(source, playerSlotsStart, craftingSlotsStart, true)) return ItemStack.EMPTY;
-            slot.onQuickCraft(source, original);
-            if (source.isEmpty()) slot.setByPlayer(ItemStack.EMPTY);
-            else slot.setChanged();
-            if (source.getCount() == original.getCount()) return ItemStack.EMPTY;
-            slot.onTake(player, source);
-            if (!source.isEmpty()) player.drop(source, false);
-            return original;
+            if (machine != null) machine.beginBatch();
+            deferCraftingBroadcasts = true;
+            try {
+                int outputPerCraft = original.getCount();
+                int maxCrafts = original.getMaxStackSize() / outputPerCraft;
+                for (int craft = 0; craft < maxCrafts; craft++) {
+                    source = slot.getItem();
+                    if (source.isEmpty() || !ItemStack.isSameItemSameTags(source, original)) break;
+                    if (computePlayerCapacity(original) < outputPerCraft) break;
+
+                    ItemStack crafted = source.copy();
+                    if (!moveItemStackTo(source, playerSlotsStart, craftingSlotsStart, true)) break;
+                    slot.onQuickCraft(source, crafted);
+                    if (source.isEmpty()) slot.setByPlayer(ItemStack.EMPTY);
+                    else slot.setChanged();
+                    if (source.getCount() == crafted.getCount()) break;
+                    slot.onTake(player, source);
+                    if (!source.isEmpty()) player.drop(source, false);
+                }
+            } finally {
+                deferCraftingBroadcasts = false;
+                broadcastChanges();
+                if (machine != null) machine.endBatch();
+            }
+            return ItemStack.EMPTY;
         }
 
         if (machine != null) machine.beginBatch();
