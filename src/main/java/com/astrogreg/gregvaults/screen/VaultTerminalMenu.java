@@ -47,6 +47,7 @@ public class VaultTerminalMenu extends AbstractVaultMenu {
 
     @Override
     public boolean stillValid(Player player) {
+        if (player.isSpectator()) return false;
         if (machine == null) return true;
         if (!machine.isFormed() || !machine.getVaultTier().wirelessAllowed() || linkedVault == null ||
                 !MachineOwner.canOpenOwnerMachine(player, machine)) {

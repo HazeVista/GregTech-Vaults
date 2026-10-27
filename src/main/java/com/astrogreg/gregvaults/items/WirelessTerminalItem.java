@@ -226,6 +226,7 @@ public class WirelessTerminalItem extends Item {
     public InteractionResultHolder<ItemStack> open(Level level, Player player, ItemStack stack) {
         if (level.isClientSide) return InteractionResultHolder.success(stack);
         if (!(player instanceof ServerPlayer serverPlayer)) return InteractionResultHolder.pass(stack);
+        if (serverPlayer.isSpectator()) return InteractionResultHolder.fail(stack);
 
         GlobalPos linkedPos = getLinkedPosition(stack);
         if (linkedPos == null) {

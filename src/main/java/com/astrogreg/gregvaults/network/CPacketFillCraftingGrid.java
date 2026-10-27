@@ -41,12 +41,12 @@ public class CPacketFillCraftingGrid {
     public static void handle(CPacketFillCraftingGrid packet, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             ServerPlayer player = ctx.get().getSender();
-            if (player == null) return;
-            if (!(player.containerMenu instanceof AbstractVaultMenu menu)) return;
+            if (player == null || player.isSpectator()) return;
+            if (!(player.containerMenu instanceof AbstractVaultMenu menu) || !menu.stillValid(player)) return;
             if (!(menu.vaultHandler instanceof ItemStackHandler vaultHandler)) return;
 
             Ingredient[] grid = resolveGrid(packet, player);
-            fillCraftingGrid(menu, vaultHandler, grid, player);
+            fillCraftingGrid(menu, vaultHandler, grid, alignTemplate(grid, packet.template), player);
         });
         ctx.get().setPacketHandled(true);
     }
@@ -87,8 +87,30 @@ public class CPacketFillCraftingGrid {
         return grid;
     }
 
+    private static ItemStack[] alignTemplate(Ingredient[] grid, ItemStack[] template) {
+        ItemStack[] aligned = new ItemStack[9];
+        boolean[] used = new boolean[9];
+        for (int slot = 0; slot < 9; slot++) {
+            aligned[slot] = ItemStack.EMPTY;
+            Ingredient ingredient = grid[slot];
+            if (ingredient == null || ingredient.isEmpty()) continue;
+
+            int selected = !used[slot] && !template[slot].isEmpty() && ingredient.test(template[slot]) ? slot : -1;
+            for (int candidate = 0; selected < 0 && candidate < 9; candidate++) {
+                if (!used[candidate] && !template[candidate].isEmpty() && ingredient.test(template[candidate])) {
+                    selected = candidate;
+                }
+            }
+            if (selected >= 0) {
+                aligned[slot] = template[selected];
+                used[selected] = true;
+            }
+        }
+        return aligned;
+    }
+
     private static void fillCraftingGrid(AbstractVaultMenu menu, ItemStackHandler vaultHandler,
-                                         Ingredient[] grid, ServerPlayer player) {
+                                         Ingredient[] grid, ItemStack[] template, ServerPlayer player) {
         if (menu.machine != null)
             menu.machine.beginBatch();
         menu.beginCraftingGridBulkUpdate();
@@ -108,9 +130,11 @@ public class CPacketFillCraftingGrid {
             for (int g = 0; g < 9; g++) {
                 Ingredient ing = grid[g];
                 if (ing == null || ing.isEmpty()) continue;
+                ItemStack requested = template[g];
+                if (requested.isEmpty() || !ing.test(requested)) continue;
 
-                ItemStack pulled = tryExtractVault(vaultHandler, ing);
-                if (pulled.isEmpty()) pulled = tryExtractPlayerInv(player, ing);
+                ItemStack pulled = tryExtractVault(vaultHandler, requested);
+                if (pulled.isEmpty()) pulled = tryExtractPlayerInv(menu, player, requested);
                 if (!pulled.isEmpty()) {
                     menu.craftingGrid.setItem(g, pulled);
                 }
@@ -121,19 +145,13 @@ public class CPacketFillCraftingGrid {
         }
     }
 
-    private static ItemStack tryExtractVault(ItemStackHandler handler, Ingredient ingredient) {
+    private static ItemStack tryExtractVault(ItemStackHandler handler, ItemStack requested) {
         if (handler instanceof VaultStorage storage) {
-            for (VaultStorage.Entry entry : storage.getEntries()) {
-                ItemStack stack = entry.displayStack();
-                if (ingredient.test(stack)) {
-                    return storage.extract(entry.key(), 1, false);
-                }
-            }
-            return ItemStack.EMPTY;
+            return storage.extract(VaultStorage.StackKey.of(requested), 1, false);
         }
         for (int v = 0; v < handler.getSlots(); v++) {
             ItemStack s = handler.getStackInSlot(v);
-            if (s.isEmpty() || !ingredient.test(s)) continue;
+            if (!ItemStack.isSameItemSameTags(s, requested)) continue;
             ItemStack extracted = handler.extractItem(v, 1, false);
             if (!extracted.isEmpty()) return extracted;
         }
@@ -148,15 +166,11 @@ public class CPacketFillCraftingGrid {
         return stack;
     }
 
-    private static ItemStack tryExtractPlayerInv(ServerPlayer player, Ingredient ingredient) {
-        var inv = player.getInventory();
-        for (int i = 0; i < inv.getContainerSize(); i++) {
-            ItemStack s = inv.getItem(i);
-            if (s.isEmpty() || !ingredient.test(s)) continue;
-            ItemStack extracted = s.copyWithCount(1);
-            s.shrink(1);
-            if (s.isEmpty()) inv.setItem(i, ItemStack.EMPTY);
-            return extracted;
+    private static ItemStack tryExtractPlayerInv(AbstractVaultMenu menu, ServerPlayer player, ItemStack requested) {
+        for (int i = menu.playerSlotsStart; i < menu.craftingSlotsStart; i++) {
+            var slot = menu.slots.get(i);
+            if (!slot.mayPickup(player) || !ItemStack.isSameItemSameTags(slot.getItem(), requested)) continue;
+            return slot.safeTake(1, 1, player);
         }
         return ItemStack.EMPTY;
     }

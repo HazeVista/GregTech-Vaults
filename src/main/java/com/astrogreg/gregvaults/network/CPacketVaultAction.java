@@ -69,8 +69,8 @@ public class CPacketVaultAction {
     public static void handle(CPacketVaultAction packet, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             ServerPlayer player = ctx.get().getSender();
-            if (player == null) return;
-            if (!(player.containerMenu instanceof AbstractVaultMenu menu)) return;
+            if (player == null || player.isSpectator()) return;
+            if (!(player.containerMenu instanceof AbstractVaultMenu menu) || !menu.stillValid(player)) return;
 
             switch (packet.type) {
                 case SCROLL -> menu.setScrollRow(packet.scrollRow, player);

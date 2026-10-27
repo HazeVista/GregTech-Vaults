@@ -55,8 +55,7 @@ public class VaultJeiTransferHandler<T extends AbstractVaultMenu>
 
         for (int i = 0; i < Math.min(inputs.size(), 9); i++) {
             final int idx = i;
-            inputs.get(i).getItemStacks()
-                    .findFirst()
+            inputs.get(i).getDisplayedItemStack()
                     .ifPresent(stack -> template[idx] = stack.copy());
         }
 

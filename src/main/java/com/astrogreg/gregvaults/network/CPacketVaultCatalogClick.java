@@ -27,9 +27,9 @@ public record CPacketVaultCatalogClick(ItemStack stack, int button, boolean shif
     public static void handle(CPacketVaultCatalogClick packet, Supplier<NetworkEvent.Context> context) {
         context.get().enqueueWork(() -> {
             ServerPlayer player = context.get().getSender();
-            if (player != null && player.containerMenu instanceof AbstractVaultMenu menu) {
-                menu.handleCatalogClick(player, packet.stack, packet.button, packet.shiftDown);
-            }
+            if (player == null || player.isSpectator()) return;
+            if (!(player.containerMenu instanceof AbstractVaultMenu menu) || !menu.stillValid(player)) return;
+            menu.handleCatalogClick(player, packet.stack, packet.button, packet.shiftDown);
         });
         context.get().setPacketHandled(true);
     }

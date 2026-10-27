@@ -35,6 +35,7 @@ public class VaultContainerMenu extends AbstractVaultMenu {
 
     @Override
     public boolean stillValid(Player player) {
+        if (player.isSpectator()) return false;
         if (machine == null) return true;
         return machine.isFormed() && MachineOwner.canOpenOwnerMachine(player, machine) &&
                 player.distanceToSqr(machine.getPos().getCenter()) <= 64.0;
