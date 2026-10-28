@@ -126,7 +126,7 @@ public class VaultMachine
     private void refreshCatalogViewers() {
         activeViewers.removeIf(player -> {
             if (player.containerMenu instanceof AbstractVaultMenu menu && menu.machine == this) {
-                menu.sendCatalogPage(player);
+                menu.refreshCatalog(player);
                 return false;
             }
             return true;

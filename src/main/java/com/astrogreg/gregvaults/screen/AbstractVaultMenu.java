@@ -58,6 +58,8 @@ public abstract class AbstractVaultMenu extends AbstractContainerMenu {
     private final ItemStack[] lastGridIngredients = new ItemStack[9];
 
     private List<VaultCatalogEntry> catalogPage = List.of();
+    private List<VaultCatalogEntry> catalogEntries = List.of();
+    private boolean catalogDirty = true;
     private int catalogTotal;
     private int scrollRow;
     private String searchQuery = "";
@@ -166,26 +168,55 @@ public abstract class AbstractVaultMenu extends AbstractContainerMenu {
     }
 
     public void setSearch(String query, ServerPlayer player) {
-        this.searchQuery = query == null ? "" : query.strip();
+        String newQuery = query == null ? "" : query.strip();
+        if (newQuery.equals(searchQuery)) return;
+        this.searchQuery = newQuery;
         this.scrollRow = 0;
+        this.catalogDirty = true;
         sendCatalogPage(player);
     }
 
     public void setSort(VaultSortMode mode, boolean reversed, ServerPlayer player) {
-        this.sortMode = Objects.requireNonNull(mode);
+        mode = Objects.requireNonNull(mode);
+        if (mode == sortMode && reversed == sortReversed) return;
+        this.sortMode = mode;
         this.sortReversed = reversed;
         this.scrollRow = 0;
+        this.catalogDirty = true;
         sendCatalogPage(player);
     }
 
     public void setScrollRow(int row, ServerPlayer player) {
-        this.scrollRow = Math.max(0, row);
+        if (!(vaultHandler instanceof VaultStorage storage)) return;
+        int totalRows = (int) Math.ceil(getCatalogEntries(storage).size() / (double) COLS);
+        int newScrollRow = Math.max(0, Math.min(row, Math.max(0, totalRows - visibleRows)));
+        if (newScrollRow == scrollRow) return;
+        this.scrollRow = newScrollRow;
+        sendCatalogPage(player);
+    }
+
+    public void refreshCatalog(ServerPlayer player) {
+        catalogDirty = true;
         sendCatalogPage(player);
     }
 
     public void sendCatalogPage(ServerPlayer player) {
         if (!(vaultHandler instanceof VaultStorage storage)) return;
 
+        List<VaultCatalogEntry> entries = getCatalogEntries(storage);
+        int totalRows = (int) Math.ceil(entries.size() / (double) COLS);
+        int maxScroll = Math.max(0, totalRows - visibleRows);
+        scrollRow = Math.min(scrollRow, maxScroll);
+        int from = Math.min(scrollRow * COLS, entries.size());
+        int to = Math.min(from + getPageSize(), entries.size());
+        List<VaultCatalogEntry> page = entries.subList(from, to);
+
+        VaultNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
+                new SPacketVaultCatalog(containerId, scrollRow, entries.size(), page));
+    }
+
+    private List<VaultCatalogEntry> getCatalogEntries(VaultStorage storage) {
+        if (!catalogDirty) return catalogEntries;
         List<VaultCatalogEntry> entries = new ArrayList<>();
         String normalizedQuery = searchQuery.toLowerCase(Locale.ROOT);
         for (VaultStorage.Entry entry : storage.getEntries()) {
@@ -206,16 +237,9 @@ public abstract class AbstractVaultMenu extends AbstractContainerMenu {
                 Comparator.comparingLong(VaultCatalogEntry::count).thenComparing(byName) : byName;
         if (sortReversed) comparator = comparator.reversed();
         entries.sort(comparator);
-
-        int totalRows = (int) Math.ceil(entries.size() / (double) COLS);
-        int maxScroll = Math.max(0, totalRows - visibleRows);
-        scrollRow = Math.min(scrollRow, maxScroll);
-        int from = Math.min(scrollRow * COLS, entries.size());
-        int to = Math.min(from + getPageSize(), entries.size());
-        List<VaultCatalogEntry> page = entries.subList(from, to);
-
-        VaultNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
-                new SPacketVaultCatalog(containerId, scrollRow, entries.size(), page));
+        catalogEntries = List.copyOf(entries);
+        catalogDirty = false;
+        return catalogEntries;
     }
 
     public void handleCatalogClick(ServerPlayer player, ItemStack requested, int button, boolean shiftDown) {
