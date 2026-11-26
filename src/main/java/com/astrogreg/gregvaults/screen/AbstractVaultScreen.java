@@ -14,7 +14,6 @@ import com.astrogreg.gregvaults.GregTechVaults;
 import com.astrogreg.gregvaults.network.CPacketVaultAction;
 import com.astrogreg.gregvaults.network.CPacketVaultCatalogClick;
 import com.astrogreg.gregvaults.network.VaultNetwork;
-
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
